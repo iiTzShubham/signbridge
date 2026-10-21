@@ -1,0 +1,14 @@
+{% extends 'base.html' %}
+{% block title %}Dashboard · SignBridge{% endblock %}
+{% block content %}
+<section class="dashboard page-wrap">
+  <div class="eyebrow">YOUR SPACE</div>
+  <h1>Welcome, {{ user.first_name|default:user.username }} <span aria-hidden="true">👋</span></h1>
+  <p class="hero-lede">Your SignBridge journey starts here. Choose a path and take it one sign at a time.</p>
+  <div class="dashboard-grid">
+    <a class="dashboard-card dashboard-card-link" href="{% url 'learning:lesson_list' %}"><span class="dashboard-icon">📚</span><h2>Learn</h2><p>Browse beginner ISL lessons, watch the videos, and practice at your pace.</p><span class="coming-label">Open lessons ↗</span></a>
+    <a class="dashboard-card dashboard-card-link" href="{% url 'recognition:recognize' %}"><span class="dashboard-icon">🖐️</span><h2>Recognize</h2><p>Use a camera clip or upload a video to try the sign recognition model.</p><span class="coming-label">Open recognition ↗</span></a>
+    <a class="dashboard-card dashboard-card-link" href="{% url 'translation:translator' %}"><span class="dashboard-icon">🌍</span><h2>Translate</h2><p>Explore starter English, Hindi, and Marathi vocabulary with ISL videos.</p><span class="coming-label">Open translator ↗</span></a>
+  </div>
+</section>
+{% endblock %}

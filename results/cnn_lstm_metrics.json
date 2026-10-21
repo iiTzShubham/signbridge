@@ -1,0 +1,57 @@
+{
+  "status": "complete",
+  "model": "cnn_lstm",
+  "runs": 3,
+  "metrics": {
+    "top1_accuracy_pct": {
+      "mean": 11.392405,
+      "std": 1.2658229999999993,
+      "n": 3
+    },
+    "top5_accuracy_pct": {
+      "mean": 27.426160333333332,
+      "std": 2.222711380739825,
+      "n": 3
+    },
+    "macro_precision_pct": {
+      "mean": 8.507407333333333,
+      "std": 1.3615340409443806,
+      "n": 3
+    },
+    "macro_recall_pct": {
+      "mean": 10.333333333333334,
+      "std": 1.5275252316519468,
+      "n": 3
+    },
+    "macro_f1_pct": {
+      "mean": 8.55772,
+      "std": 0.9214632621092392,
+      "n": 3
+    },
+    "average_inference_latency_ms": {
+      "mean": 31.730787666666664,
+      "std": 1.0764375325871594,
+      "n": 3
+    },
+    "fps": {
+      "mean": 504.63553866666666,
+      "std": 17.39626940772145,
+      "n": 3
+    },
+    "checkpoint_size_mb": {
+      "mean": 101.09841266666666,
+      "std": 0.0005737110190118073,
+      "n": 3
+    },
+    "duration_seconds": {
+      "mean": 16.024418666666666,
+      "std": 1.4324068824731093,
+      "n": 3
+    }
+  },
+  "run_files": [
+    "metrics\\cnn_lstm_seed_123_metrics.json",
+    "metrics\\cnn_lstm_seed_2026_metrics.json",
+    "metrics\\cnn_lstm_seed_42_metrics.json"
+  ]
+}

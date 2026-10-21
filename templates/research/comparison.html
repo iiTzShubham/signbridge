@@ -1,0 +1,92 @@
+{% extends "base.html" %}
+{% block title %}Research lab · SignBridge{% endblock %}
+{% block extra_head %}<link rel="stylesheet" href="{% load static %}{% static 'css/research.css' %}">{% endblock %}
+{% block content %}
+<section class="research-page">
+  <div class="research-hero">
+    <div class="research-hero-copy">
+      <p class="research-kicker"><span class="research-kicker-dot"></span> SIGNBRIDGE RESEARCH LAB</p>
+      <h1>Better signs,<br><em>better understanding.</em></h1>
+      <p class="research-lead">A clear look at how two video models learn to recognize sign language. Every number here comes from a recorded experiment.</p>
+      <a class="research-hero-link" href="#results">Explore the results <span aria-hidden="true">↓</span></a>
+    </div>
+    <div class="research-hero-art" aria-hidden="true">
+      <div class="research-orbit orbit-one"></div><div class="research-orbit orbit-two"></div>
+      <div class="research-art-card"><span class="research-art-hand">✳</span><span>learning in motion</span><b>01 — 02</b></div>
+      <span class="research-spark spark-one">✦</span><span class="research-spark spark-two">✳</span>
+    </div>
+  </div>
+
+  <div class="research-status research-status-{{ state }}" role="status">
+    <span class="research-status-icon">{% if state == "complete" %}✓{% elif state == "needs_setup" %}↗{% else %}◎{% endif %}</span>
+    <div class="research-status-copy">
+      <strong>{% if state == "complete" %}Experiments are ready to explore{% elif state == "needs_setup" %}Your research space is ready for setup{% else %}Waiting for the first experiment{% endif %}</strong>
+      <span>{% if complete_count %}{{ complete_count }} completed run{{ complete_count|pluralize }} recorded. Results below show the latest completed run for each model.{% elif state == "needs_setup" %}No measurements yet. Follow the short setup guide below to start a real comparison.{% else %}Run the paired experiment to see measured model results here.{% endif %}</span>
+    </div>
+    {% if state == "complete" %}<span class="research-status-tag">MEASURED</span>{% else %}<span class="research-status-tag">NO RESULTS YET</span>{% endif %}
+  </div>
+
+  {% if needs_ml or needs_dataset %}
+  <div class="research-prereq-grid">
+    {% if needs_ml %}<article class="research-prereq"><span class="research-prereq-icon">⌘</span><div><b>Install the research tools</b><p>The website is running. Model training needs the separate machine learning packages.</p><code>python -m pip install -r requirements-ml.txt</code></div></article>{% endif %}
+    {% if needs_dataset %}<article class="research-prereq"><span class="research-prereq-icon">▧</span><div><b>Add the WLASL dataset</b><p>Request the video data from the official project and place it in the expected folder. This project does not include those videos.</p><a href="https://github.com/dxli94/WLASL" target="_blank" rel="noopener">WLASL dataset instructions <span aria-hidden="true">↗</span></a></div></article>{% endif %}
+  </div>
+  {% endif %}
+
+  <section class="research-section" id="results">
+    <div class="research-section-heading"><div><p class="research-overline">THE TWO APPROACHES</p><h2>What are we comparing?</h2></div><p>Both models use the same video clips and test split, so their results can be compared fairly.</p></div>
+    <div class="research-model-grid">
+      <article class="research-model-card model-cnn">
+        <div class="research-model-top"><span class="research-model-symbol">↝</span><span class="research-model-number">MODEL 01</span></div>
+        <h3>CNN-LSTM</h3><p class="research-model-summary">Looks at the details in each frame, then follows how the sign moves over time.</p>
+        <div class="research-model-flow"><span>Frame details</span><i>→</i><span>Movement</span><i>→</i><span>Sign</span></div>
+        <div class="research-model-result">{% if latest.cnn_lstm %}<span class="result-dot measured"></span> Latest run · seed {{ latest.cnn_lstm.seed }}{% else %}<span class="result-dot"></span> Waiting for a completed run{% endif %}</div>
+      </article>
+      <article class="research-model-card model-vit">
+        <div class="research-model-top"><span class="research-model-symbol">✳</span><span class="research-model-number">MODEL 02</span></div>
+        <h3>Vision Transformer</h3><p class="research-model-summary">Finds visual patterns in frames and uses a second transformer to model their order.</p>
+        <div class="research-model-flow"><span>Frame patterns</span><i>→</i><span>Frame order</span><i>→</i><span>Sign</span></div>
+        <div class="research-model-result">{% if latest.vit_temporal %}<span class="result-dot measured"></span> Latest run · seed {{ latest.vit_temporal.seed }}{% else %}<span class="result-dot"></span> Waiting for a completed run{% endif %}</div>
+      </article>
+    </div>
+  </section>
+
+  <section class="research-section research-results-section">
+    <div class="research-section-heading"><div><p class="research-overline">THE SCORECARD</p><h2>How are they doing?</h2></div><p>We’ll show the measurements once models have been tested on videos they did not train on.</p></div>
+    <div class="research-table-shell">
+      <div class="research-table-topline"><span class="table-spark">✦</span><span>MODEL PERFORMANCE</span><span class="table-note">A dash means no result has been measured yet</span></div>
+      <div class="research-table-wrap"><table class="research-table"><thead><tr><th>Measure</th><th><span class="table-model-mark cnn-mark">↝</span> CNN-LSTM</th><th><span class="table-model-mark vit-mark">✳</span> Vision Transformer</th></tr></thead><tbody>
+        {% for row in table %}<tr><th><span class="metric-name">{{ row.label }}</span><span class="metric-help">{{ row.description }}</span></th><td>{% if row.cnn is not None %}<strong>{{ row.cnn|floatformat:2 }}</strong> <small>{{ row.unit }}</small>{% else %}<span class="not-measured">Not measured</span>{% endif %}</td><td>{% if row.vit is not None %}<strong>{{ row.vit|floatformat:2 }}</strong> <small>{{ row.unit }}</small>{% else %}<span class="not-measured">Not measured</span>{% endif %}</td></tr>{% endfor %}
+      </tbody></table></div>
+      <div class="research-table-foot"><span>ⓘ</span> Speed numbers measure model processing only. Opening and preparing video clips is not included.</div>
+    </div>
+  </section>
+
+  <section class="research-guide">
+    <div class="research-guide-intro"><p class="research-overline">FROM SETUP TO FINDINGS</p><h2>How to get your first results</h2><p>Four small steps take you from the dataset to a side-by-side comparison.</p><span class="research-guide-sticker" aria-hidden="true">one step<br>at a time ✦</span></div>
+    <div class="research-steps">
+      <article class="research-step"><span class="step-number">01</span><div><h3>Prepare the dataset</h3><p>Place WLASL videos and its annotation file in <code>datasets/WLASL-100/</code>.</p><a href="https://github.com/dxli94/WLASL" target="_blank" rel="noopener">Read dataset instructions ↗</a></div></article>
+      <article class="research-step"><span class="step-number">02</span><div><h3>Build and check the video list</h3><p>This creates the shared class labels and train, validation, and test split.</p><button class="research-copy" type="button" data-copy="python datasets/build_manifest.py --annotations datasets/WLASL-100/WLASL_v0.3.json --dataset-root datasets/WLASL-100 --classes 100 --seed 42 --split-mode provided">Copy setup command <span aria-hidden="true">⧉</span></button></div></article>
+      <article class="research-step"><span class="step-number">03</span><div><h3>Train and compare</h3><p>Both models train with the same data and are measured on the held-out test split.</p><button class="research-copy" type="button" data-copy="python -m training.compare_models --config experiment_config.json">Copy run command <span aria-hidden="true">⧉</span></button></div></article>
+      <article class="research-step"><span class="step-number">04</span><div><h3>Bring results into this page</h3><p>Import completed measurements to update the scorecard and download the report.</p><button class="research-copy" type="button" data-copy="python manage.py import_experiment_results">Copy import command <span aria-hidden="true">⧉</span></button></div></article>
+    </div>
+    <div class="research-install-tip"><span>✦</span><p><strong>First time setting up?</strong> Install the ML tools first with <code>python -m pip install -r requirements-ml.txt</code>, then validate your manifest with <code>python datasets/validate_manifest.py --manifest datasets/WLASL-100/manifest.csv --dataset-root datasets/WLASL-100 --classes 100</code>.</p></div>
+  </section>
+
+  <section class="research-report-row"><div><p class="research-overline">TAKE IT WITH YOU</p><h2>Your research files</h2><p>Download the latest report and comparison table. Missing measurements stay clearly marked.</p></div><div class="research-downloads">
+    {% if report_available %}<a href="{% url 'research:download' 'report' %}" class="research-download"><span>↧</span><b>Research report</b><small>Markdown · editable</small></a>{% endif %}
+    <a href="{% url 'research:download' 'comparison' %}" class="research-download"><span>▤</span><b>Comparison table</b><small>CSV · spreadsheet</small></a>
+    {% if docx_available %}<a href="{% url 'research:download' 'docx' %}" class="research-download"><span>↧</span><b>Paper section</b><small>Word document</small></a>{% endif %}
+  </div></section>
+</section>
+<script>
+document.querySelectorAll(".research-copy").forEach((button) => {
+  button.addEventListener("click", async () => {
+    const original = button.innerHTML;
+    try { await navigator.clipboard.writeText(button.dataset.copy); button.innerHTML = "Copied! <span aria-hidden='true'>✓</span>"; }
+    catch { button.innerHTML = button.dataset.copy; }
+    window.setTimeout(() => { button.innerHTML = original; }, 1800);
+  });
+});
+</script>
+{% endblock %}

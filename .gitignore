@@ -1,0 +1,24 @@
+.venv/
+.venv-mac-unused/
+venv/
+__pycache__/
+*.py[cod]
+*.sqlite3
+.env
+.DS_Store
+media/
+staticfiles/
+trained_models/**
+!trained_models/.gitkeep
+# WLASL videos and annotations are not redistributed (C-UDA terms); keep code, split and label map.
+datasets/*/*
+!datasets/WLASL-100/manifest.csv
+!datasets/WLASL-100/label_map.json
+results/checkpoints/
+results/feature_cache/
+experiments/*.pt
+experiments/ft*/
+notebooks/.ipynb_checkpoints/
+.pytest_cache/
+.coverage
+htmlcov/

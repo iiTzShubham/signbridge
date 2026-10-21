@@ -1,0 +1,64 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}Sign recognition · SignBridge{% endblock %}
+{% block extra_head %}<link rel="stylesheet" href="{% static 'css/tools.css' %}"><style>.camera-stage video:not([hidden]){display:block}</style>{% endblock %}
+{% block content %}
+<section class="tool-page">
+  <header class="tool-hero recognize-hero"><div><p class="tool-kicker">SIGNBRIDGE · CAMERA LAB</p><h1>Let’s read a sign<br><em>together.</em></h1><p>Show a short sign to your camera or upload a clip. A trained model will suggest the closest sign it knows.</p></div><div class="tool-hero-illustration" aria-hidden="true"><span>✋</span><i>● &nbsp; ● &nbsp; ●</i></div></header>
+  <div class="tool-note tool-note-warm"><span>ⓘ</span><p><strong>About recognition right now</strong><br>The camera and video input are ready. A prediction needs a trained model checkpoint. The current experiment config uses WLASL (American Sign Language); it will not recognize ISL reliably. ISL recognition needs an ISL-trained model.</p></div>
+
+  <div class="recognition-layout">
+    <section class="camera-card"><div class="tool-card-heading"><div><span class="tool-overline">YOUR CLIP</span><h2>Use your camera</h2></div><span class="live-badge"><i></i> PRIVATE PREVIEW</span></div>
+      <div class="camera-stage" id="camera-stage"><video id="camera-preview" autoplay muted playsinline hidden></video><div class="camera-placeholder" id="camera-placeholder"><span>✋</span><b>Your hands will appear here</b><small>Keep your hands and face in frame, in good light.</small></div><span class="camera-frame-label">CAMERA PREVIEW</span></div>
+      <div class="camera-controls"><button class="tool-button tool-button-main" id="camera-start" type="button">Start camera <span>↗</span></button><button class="tool-button tool-button-soft" id="camera-capture" type="button" disabled>Capture sign</button><button class="tool-button tool-button-text" id="camera-stop" type="button" disabled>Stop</button></div>
+      <p class="camera-help" id="camera-message">Your video stays in this browser until you choose to submit it for recognition.</p>
+      <div class="upload-divider"><span>OR</span></div>
+      <form method="post" enctype="multipart/form-data" class="clip-upload">{% csrf_token %}
+        <input type="hidden" name="model" id="upload-model" value="{{ selected_model }}">
+        <label for="video-file" class="clip-drop"><span class="clip-drop-icon">↥</span><span><strong>Choose a video clip</strong><small>MP4 or WebM · up to 50 MB</small></span><input id="video-file" name="video" type="file" accept="video/*" required></label>
+        <button type="submit" class="tool-button tool-button-main">Recognize this clip <span>→</span></button>
+      </form>
+    </section>
+
+    <aside class="recognition-side"><section class="model-picker"><span class="tool-overline">PICK A MODEL</span><h2>Which model?</h2><p>Both options need a trained checkpoint before they can make predictions.</p><label class="model-choice"><input type="radio" name="model-choice" value="cnn_lstm" {% if selected_model == 'cnn_lstm' %}checked{% endif %}><span class="choice-icon">↝</span><span><b>CNN-LSTM</b><small>ResNet features + movement tracking</small></span></label><label class="model-choice"><input type="radio" name="model-choice" value="vit_temporal" {% if selected_model == 'vit_temporal' %}checked{% endif %}><span class="choice-icon choice-vit">✳</span><span><b>Vision Transformer</b><small>Frame patterns + temporal attention</small></span></label></section>
+      <section class="prediction-card" id="prediction-card" aria-live="polite">
+        <span class="tool-overline">YOUR RESULT</span>
+        {% if result %}<div class="prediction-label">{{ result.label|title }}</div><p class="prediction-caption">Closest match in this model’s vocabulary</p><div class="confidence-line"><span>Model confidence</span><b>{{ result.confidence|floatformat:1 }}%</b></div><div class="confidence-track"><i style="width:{{ result.confidence }}%"></i></div><div class="top-predictions">{% for item in result.top_predictions %}<div><span>{{ item.label|title }}</span><b>{{ item.confidence|floatformat:1 }}%</b></div>{% endfor %}</div><p class="prediction-meta">{{ result.model }} · {{ result.device }} · {{ result.latency_ms|floatformat:1 }} ms</p>
+        {% elif error %}<div class="empty-result empty-result-warning"><span>✳</span><h3>Not ready to predict yet</h3><p>{{ error }}</p></div>
+        {% else %}<div class="empty-result"><span>✳</span><h3>Your result will show here</h3><p>Make sure the clip contains one clear sign and the trained model knows that vocabulary.</p></div>{% endif %}
+      </section>
+      {% if user.is_authenticated %}<section class="recent-predictions"><span class="tool-overline">RECENT · THIS ACCOUNT</span><h2>Last recognitions</h2>{% for item in history %}<div class="recent-row"><span>{{ item.predicted_sign|title }}</span><small>{{ item.model_name }} · {{ item.created_at|date:"M j, H:i" }}</small></div>{% empty %}<p>Your saved predictions will appear here.</p>{% endfor %}</section>{% endif %}
+    </aside>
+  </div>
+</section>
+<form id="camera-csrf" hidden>{% csrf_token %}</form>
+<script>
+(() => {
+  const video = document.getElementById("camera-preview"), placeholder = document.getElementById("camera-placeholder");
+  const start = document.getElementById("camera-start"), capture = document.getElementById("camera-capture"), stop = document.getElementById("camera-stop"), message = document.getElementById("camera-message");
+  let stream = null;
+  const selectedModel = () => document.querySelector('input[name="model-choice"]:checked').value;
+  document.querySelectorAll('input[name="model-choice"]').forEach((input) => input.addEventListener("change", () => { document.getElementById("upload-model").value = selectedModel(); }));
+  start.addEventListener("click", async () => {
+    try { stream = await navigator.mediaDevices.getUserMedia({video:{facingMode:"user"},audio:false}); video.srcObject = stream; placeholder.hidden = true; video.hidden = false; capture.disabled = false; stop.disabled = false; start.disabled = true; message.textContent = "Camera is on. Hold one sign clearly in view, then capture."; }
+    catch { message.textContent = "Camera permission was unavailable. You can still choose a video clip below."; }
+  });
+  stop.addEventListener("click", () => { if (stream) stream.getTracks().forEach((track) => track.stop()); stream = null; video.srcObject = null; video.hidden = true; placeholder.hidden = false; capture.disabled = true; stop.disabled = true; start.disabled = false; message.textContent = "Camera is off. Your video stays in this browser until you submit it."; });
+  capture.addEventListener("click", async () => {
+    if (!video.videoWidth) return;
+    capture.disabled = true; capture.textContent = "Capturing…";
+    const canvas = document.createElement("canvas"), ctx = canvas.getContext("2d"), data = new FormData();
+    canvas.width = video.videoWidth; canvas.height = video.videoHeight;
+    const csrf = document.querySelector('#camera-csrf [name="csrfmiddlewaretoken"]').value;
+    data.append("csrfmiddlewaretoken", csrf); data.append("model", selectedModel());
+    for (let n = 3; n > 0; n--) { message.textContent = `Get ready… ${n}`; await new Promise((resolve) => setTimeout(resolve, 1000)); }
+    message.textContent = "Sign now…";
+    // ~2.5 s window so the whole sign is covered; the server samples evenly from these frames.
+    for (let i = 0; i < 16; i++) { ctx.drawImage(video, 0, 0); const blob = await new Promise((resolve) => canvas.toBlob(resolve, "image/jpeg", .82)); data.append("frames", blob, `frame-${i}.jpg`); await new Promise((resolve) => setTimeout(resolve, 160)); }
+    message.textContent = "Sending these frames for recognition…";
+    try { const response = await fetch(window.location.href, {method:"POST", body:data, headers:{"Accept":"application/json"}}); const payload = await response.json(); if (payload.result) { const card = document.getElementById("prediction-card"), result = payload.result; card.replaceChildren(); const eyebrow = document.createElement("span"); eyebrow.className = "tool-overline"; eyebrow.textContent = "YOUR RESULT"; const label = document.createElement("div"); label.className = "prediction-label"; label.textContent = result.label; const caption = document.createElement("p"); caption.className = "prediction-caption"; caption.textContent = "Closest match in this model’s vocabulary"; const confidence = document.createElement("div"); confidence.className = "confidence-line"; confidence.innerHTML = "<span>Model confidence</span>"; const score = document.createElement("b"); score.textContent = `${result.confidence.toFixed(1)}%`; confidence.append(score); const meta = document.createElement("p"); meta.className = "prediction-meta"; meta.textContent = `${result.model} · ${result.device} · ${result.latency_ms.toFixed(1)} ms`; const top = document.createElement("div"); top.className = "top-predictions"; (result.top_predictions || []).forEach((item) => { const row = document.createElement("div"), name = document.createElement("span"), pct = document.createElement("b"); name.textContent = item.label; pct.textContent = `${item.confidence.toFixed(1)}%`; row.append(name, pct); top.append(row); }); card.append(eyebrow,label,caption,confidence,top,meta); message.textContent = "Done. Your camera preview stays on until you stop it."; capture.disabled = false; capture.textContent = "Capture sign again"; } else { message.textContent = payload.error || "Could not recognize this clip."; capture.disabled = false; capture.textContent = "Capture sign"; } }
+    catch { message.textContent = "Could not connect to recognition. Try uploading a video clip."; capture.disabled = false; capture.textContent = "Capture sign"; }
+  });
+})();
+</script>
+{% endblock %}

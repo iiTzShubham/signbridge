@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}Text to sign · SignBridge{% endblock %}
+{% block extra_head %}<link rel="stylesheet" href="{% static 'css/tools.css' %}">{% endblock %}
+{% block content %}
+<section class="tool-page translator-page">
+  <header class="tool-hero translate-hero"><div><p class="tool-kicker">WORDS INTO SIGNS</p><h1>Say it with<br><em>your hands.</em></h1><p>Explore a starter ISL vocabulary with text prompts and lesson videos. Choose a language you’re comfortable writing in.</p></div><div class="translate-hero-art" aria-hidden="true"><span>अ</span><i>→</i><b>✋</b><small>नमस्ते</small></div></header>
+  <div class="tool-note"><span>ⓘ</span><p><strong>A helpful starting point</strong><br>This offline phrasebook uses a small word list and shows related ISL learning resources. It is not a fluent sentence translator: ISL has its own grammar, and the videos teach complete signs in context.</p></div>
+  <div class="translator-layout">
+    <section class="translate-form-card"><div class="tool-card-heading"><div><span class="tool-overline">START WITH A WORD OR SHORT PHRASE</span><h2>What would you like to say?</h2></div><span class="translate-star">✳</span></div>
+      <form method="post" class="translation-form">{% csrf_token %}
+        <div class="language-pair"><label><span>My words are in</span><select name="source_language"><option value="en" {% if source_language == 'en' %}selected{% endif %}>English</option><option value="hi" {% if source_language == 'hi' %}selected{% endif %}>Hindi</option><option value="mr" {% if source_language == 'mr' %}selected{% endif %}>Marathi</option></select></label><span class="language-arrow">→</span><label><span>Show a word translation in</span><select name="target_language"><option value="hi" {% if target_language == 'hi' %}selected{% endif %}>Hindi</option><option value="en" {% if target_language == 'en' %}selected{% endif %}>English</option><option value="mr" {% if target_language == 'mr' %}selected{% endif %}>Marathi</option></select></label></div>
+        <label class="translate-input-label" for="translate-text">Type a word or phrase</label><textarea id="translate-text" name="text" rows="3" maxlength="1000" placeholder="Try: Hello, please help me." required>{{ text }}</textarea>
+        <div class="translation-submit-row"><span>Try “hello”, “water”, or “thank you”</span><button class="tool-button tool-button-main" type="submit">Find sign resources <span>→</span></button></div>
+        {% if error %}<p class="tool-error" role="alert">{{ error }}</p>{% endif %}
+      </form>
+      {% if translated_text %}<div class="translation-result"><span class="tool-overline">WORD-BY-WORD HELPER · {{ target_language_label|upper }}</span><p>{{ translated_text }}</p></div>{% endif %}
+    </section>
+    <aside class="translation-side-note"><span>✦</span><h2>Watch the whole sign.</h2><p>A single English word does not always map to one sign. Watch the lesson, including facial expression and movement, to learn how the sign is used.</p><a href="{% url 'learning:lesson_list' %}">Browse all video lessons ↗</a></aside>
+  </div>
+
+  {% if cards %}<section class="sign-results"><div class="tool-section-heading"><div><span class="tool-overline">YOUR SIGN LEARNING PATH</span><h2>Explore these signs</h2></div><span>{{ cards|length }} word{{ cards|length|pluralize }}</span></div><div class="sign-result-grid">
+    {% for item in cards %}<article class="sign-result-card"><div class="sign-result-card-top"><span class="sign-word-chip">{{ item.word|title }}</span>{% if item.sign %}<span class="sign-category-chip">{{ item.sign.get_category_display }}</span>{% else %}<span class="sign-category-chip">Fingerspelling aid</span>{% endif %}</div>
+      {% if item.video_url %}<div class="sign-video"><iframe src="{{ item.video_url }}" title="ISLRTC lesson video related to {{ item.word }}" loading="lazy" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe></div><p class="sign-video-caption">{% if item.lesson_title %}From “{{ item.lesson_title }}” — follow the lesson for the full sign in context.{% else %}ISLRTC learning video — follow the sign in context.{% endif %}</p>
+      {% elif item.sign and item.sign.image_path %}<div class="sign-image-result"><img src="{% static item.sign.image_path %}" alt="Visual sign reference for {{ item.word }}"></div>
+      {% else %}<div class="sign-video-empty"><span>✋</span><b>No word-specific video yet</b><small>Browse the video lessons or use the alphabet chart to fingerspell this word.</small><a href="{% url 'learning:lesson_detail' 'isl-alphabet' %}">Open alphabet chart ↗</a></div>{% endif %}
+      <div class="sign-result-copy"><h3>{% if item.sign %}{{ item.sign.description }}{% else %}{{ item.word|title }}{% endif %}</h3>{% if item.sign and item.sign.example_sentence %}<p>{{ item.sign.example_sentence }}</p>{% endif %}</div>
+    </article>{% endfor %}
+  </div></section>{% endif %}
+  <section class="translation-next"><span>Keep learning</span><h2>Real conversations come from practice.</h2><p>Explore ISLRTC lessons to see signs used in greetings, introductions, and everyday communication.</p><a href="{% url 'learning:lesson_list' %}" class="tool-button tool-button-soft">Go to video lessons <span>↗</span></a></section>
+</section>
+{% endblock %}

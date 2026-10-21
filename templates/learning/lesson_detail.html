@@ -1,0 +1,39 @@
+{% extends 'base.html' %}
+{% load static %}
+{% block title %}{{ lesson.title }} · Learn ISL · SignBridge{% endblock %}
+{% block extra_head %}<link rel="stylesheet" href="{% static 'css/learning.css' %}">{% endblock %}
+{% block content %}
+<section class="lesson-detail page-wrap">
+  <nav class="breadcrumb" aria-label="Breadcrumb"><a href="{% url 'learning:lesson_list' %}">All lessons</a><span aria-hidden="true">›</span><span>{{ lesson.get_category_display }}</span></nav>
+  <header class="lesson-detail-header">
+    <div><div class="eyebrow">BEGINNER · {{ lesson.duration_minutes }} MINUTES</div><h1>{{ lesson.title }}</h1><p class="lesson-detail-summary">{{ lesson.summary }}</p></div>
+    {% if progress and progress.status == 'completed' %}<div class="completed-stamp"><span>✓</span> YOU COMPLETED THIS LESSON</div>{% endif %}
+  </header>
+  {% if lesson.image_path %}
+    <section class="lesson-visual-guide" aria-labelledby="visual-guide-title">
+      <div class="lesson-section-label"><span class="lesson-section-icon">A–Z</span><div><h2 id="visual-guide-title">Look at the hand shapes</h2><p>Use this picture as a quick alphabet reference.</p></div></div>
+      <figure class="lesson-sign-image"><a href="{% static lesson.image_path %}" target="_blank" rel="noopener noreferrer"><img src="{% static lesson.image_path %}" alt="ISLRTC chart showing Indian Sign Language hand signs for English letters A to Z"><span class="image-expand-label">Open full size ↗</span></a><figcaption>English alphabet hand signs · Indian Sign Language Research and Training Centre (ISLRTC).</figcaption></figure>
+    </section>
+  {% endif %}
+  {% if lesson.video_embed_url %}
+    <section class="lesson-video-section" aria-labelledby="lesson-video-title">
+      <div class="lesson-section-label"><span class="lesson-section-icon">▶</span><div><h2 id="lesson-video-title">Watch the lesson</h2><p>Follow the signer’s hand movement, face, and body position. Pause and replay whenever you need.</p></div></div>
+      <div class="lesson-video-wrap"><iframe src="{{ lesson.video_embed_url }}" title="{{ lesson.title }} — Indian Sign Language lesson from ISLRTC" loading="lazy" referrerpolicy="strict-origin-when-cross-origin" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe></div>
+      {% if lesson.category != 'alphabet' %}<p class="playlist-hint">This player opens the ISLRTC beginner course playlist. Choose the module that matches this lesson’s topic.</p>{% endif %}
+    </section>
+  {% endif %}
+  <div class="lesson-detail-columns">
+    <article class="lesson-notes"><div class="eyebrow">YOUR LESSON NOTES</div><h2>Try these steps.</h2><div class="lesson-rich-text">{{ lesson.lesson_text|linebreaks }}</div><a class="official-source-link" href="{{ lesson.source_url }}" target="_blank" rel="noopener noreferrer">Open the original resource from {{ lesson.source_name }} <span aria-hidden="true">↗</span></a></article>
+    <aside class="lesson-practice-panel"><div class="lesson-practice-icon" aria-hidden="true">✳</div><div class="eyebrow">WHEN YOU'RE READY</div><h2>Try it yourself.</h2><p>Follow along once more, then save your practice or mark the lesson complete.</p>
+      {% if user.is_authenticated %}
+        <form method="post" action="{% url 'learning:practice' lesson.slug %}">{% csrf_token %}<button class="button lesson-action-button" type="submit">Save a practice session <span aria-hidden="true">↗</span></button></form>
+        <form method="post" action="{% url 'learning:complete' lesson.slug %}" class="complete-form">{% csrf_token %}<button class="lesson-complete-button" type="submit">{% if progress and progress.status == 'completed' %}Completed · update status{% else %}Mark this lesson complete{% endif %}</button></form>
+        {% if progress %}<div class="practice-stats">Practice saved <strong>{{ progress.practice_count }} time{{ progress.practice_count|pluralize }}</strong></div>{% endif %}
+      {% else %}
+        <a class="button lesson-action-button" href="{% url 'accounts:login' %}?next={{ request.path|urlencode }}">Log in to save progress <span aria-hidden="true">↗</span></a><span class="practice-private-note">You can watch and learn without an account.</span>
+      {% endif %}
+    </aside>
+  </div>
+  <nav class="lesson-next" aria-label="Lesson navigation"><a href="{% url 'learning:lesson_list' %}">← Back to all lessons</a><a href="{% url 'learning:lesson_list' %}?category={{ lesson.category|urlencode }}">More {{ lesson.get_category_display|lower }} lessons →</a></nav>
+</section>
+{% endblock %}

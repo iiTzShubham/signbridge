@@ -1,0 +1,31 @@
+{% extends 'base.html' %}
+{% block title %}SignBridge — Learn to sign. Connect beyond words.{% endblock %}
+{% block content %}
+<section class="hero page-wrap">
+  <div class="hero-copy">
+    <div class="eyebrow"><span class="eyebrow-dot"></span> A more connected world starts here</div>
+    <h1>Learn to sign.<br>Connect <span class="serif-accent">beyond words.</span></h1>
+    <p class="hero-lede">Your welcoming space to learn sign language, practice at your pace, and make every conversation count.</p>
+    <div class="hero-actions"><a class="button button-large" href="{% url 'learning:lesson_list' %}">Start learning <span aria-hidden="true">↗</span></a><a class="text-link" href="#features">Explore the platform <span aria-hidden="true">↓</span></a></div>
+    <div class="hero-social"><div class="avatar-stack"><span>👋</span><span>🙂</span><span>🤟</span></div><span>Made for curious minds and open hearts</span></div>
+  </div>
+  <div class="hero-art" aria-label="Illustration of a person communicating with sign language">
+    <div class="art-orbit orbit-one"></div><div class="art-orbit orbit-two"></div>
+    <div class="art-sun"></div>
+    <div class="art-card art-card-top"><span class="art-card-icon">✦</span><span>Every gesture<br>has a story</span></div>
+    <div class="person-illustration"><div class="person-hair"></div><div class="person-face"><span class="eye eye-left"></span><span class="eye eye-right"></span><span class="smile"></span></div><div class="person-neck"></div><div class="person-body"><span class="shirt-seam"></span></div><div class="person-arm arm-left"></div><div class="person-arm arm-right"></div><div class="person-hand hand-left">✋</div><div class="person-hand hand-right">✋</div></div>
+    <div class="art-note note-left"><span class="note-dot lavender"></span> Learn at your own pace</div><div class="art-note note-right"><span class="note-dot coral"></span> Practice with purpose</div>
+    <div class="art-spark spark-one">✳</div><div class="art-spark spark-two">✦</div>
+  </div>
+</section>
+<section class="trust-strip"><div class="page-wrap trust-inner"><span>MORE THAN WORDS</span><span class="trust-line"></span><span>MORE THAN A LANGUAGE</span><span class="trust-line"></span><span>A WAY TO COME CLOSER</span></div></section>
+<section class="features-section page-wrap" id="features">
+  <div class="section-heading"><div><div class="eyebrow">YOUR JOURNEY, YOUR WAY</div><h2>Find your way to <span class="serif-accent">connect.</span></h2></div><p>Whether you're taking your first step or ready to go further, there's a place for you here.</p></div>
+  <div class="feature-grid">
+    <article class="feature-card feature-learn"><div class="feature-top"><span class="feature-number">01 / LEARN</span><span class="feature-icon">✳</span></div><div class="feature-visual learn-visual"><span class="hand-emoji">🤟</span><span class="visual-word word-one">HELLO</span><span class="visual-word word-two">THANK YOU</span><span class="visual-orbit"></span></div><h3>Start with a single sign.</h3><p>Explore bite-sized lessons built around real, everyday conversations.</p><a class="feature-link" href="{% url 'learning:lesson_list' %}">Explore lessons <span>↗</span></a></article>
+    <article class="feature-card feature-practice"><div class="feature-top"><span class="feature-number">02 / RECOGNIZE</span><span class="feature-icon">↗</span></div><div class="feature-visual practice-visual"><div class="camera-frame"><div class="camera-person"><div></div><span></span></div><span class="camera-live"><i></i> YOUR CAMERA</span></div><div class="confidence-chip"><span>🤟</span><span>Sign to text</span></div></div><h3>Explore sign recognition.</h3><p>Try a camera capture or upload a clip. A prediction needs a trained model.</p><a class="feature-link" href="{% url 'recognition:recognize' %}">Open recognition <span>↗</span></a></article>
+    <article class="feature-card feature-connect"><div class="feature-top"><span class="feature-number">03 / TRANSLATE</span><span class="feature-icon">♡</span></div><div class="feature-visual connect-visual"><div class="chat-bubble bubble-a">Hello <span>👋</span></div><div class="chat-bubble bubble-b"><span>✋</span> नमस्ते</div><div class="chat-bubble bubble-c">Learn the sign <span>♡</span></div><div class="connect-stars">✦　✳</div></div><h3>Find words for a sign.</h3><p>Explore starter English, Hindi, and Marathi vocabulary alongside ISL learning videos.</p><a class="feature-link" href="{% url 'translation:translator' %}">Open translator <span>↗</span></a></article>
+  </div>
+</section>
+<section class="closing-cta page-wrap" id="how-it-works"><div class="cta-decoration">✳</div><div class="eyebrow">YOUR FIRST SIGN IS CLOSER THAN YOU THINK</div><h2>A little curiosity can<br>open <span class="serif-accent">a whole new world.</span></h2><a class="button button-light button-large" href="{% url 'accounts:register' %}">Take your first step <span>↗</span></a></section>
+{% endblock %}

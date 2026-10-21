@@ -1,0 +1,88 @@
+.learn-welcome{display:grid;grid-template-columns:1fr .78fr;align-items:center;gap:64px;padding-top:68px;padding-bottom:62px}
+.learn-welcome-copy{padding-left:28px}
+.learn-welcome-copy h1{font-family:var(--display);font-size:clamp(46px,5.1vw,66px);line-height:1.08;letter-spacing:-3.5px;font-weight:600;margin:22px 0 19px}
+.learn-welcome-text{max-width:500px;color:var(--muted);font-size:16px;line-height:1.75;margin-bottom:26px}
+.learn-language-note{font-size:12px;margin-top:27px}
+.learn-language-note strong{font-size:13px}
+.learn-welcome-image{display:block;position:relative;max-height:355px;overflow:hidden;border:1px solid var(--line);border-radius:12px;background:#f5f3e5;box-shadow:0 12px 38px #283a2e10}
+.learn-welcome-image>img{display:block;width:100%;height:355px;object-fit:contain;object-position:center top;padding:13px 22px 44px}
+.welcome-image-label{position:absolute;left:0;right:0;bottom:0;display:flex;align-items:center;justify-content:space-between;gap:10px;padding:16px 20px;background:#fff}
+.welcome-image-label>span{font-size:10px;letter-spacing:1.2px;color:#737b72;font-weight:700}
+.welcome-image-label strong{font:700 15px var(--display);color:var(--ink)}
+.welcome-image-label b{margin-left:12px;color:var(--green)}
+.learn-how{display:grid;grid-template-columns:195px 1fr;gap:33px;align-items:center;padding-top:26px;padding-bottom:26px;border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
+.learn-how-title>span{font-size:10px;letter-spacing:1.3px;font-weight:700;color:var(--green)}
+.learn-how-title h2{margin:10px 0 0;font:600 22px/1.25 var(--display);letter-spacing:-.5px}
+.learn-how-steps{display:grid;grid-template-columns:repeat(3,1fr);gap:18px}
+.learn-how-step{display:flex;gap:12px;align-items:flex-start}
+.learn-step-number{flex:none;display:grid;place-items:center;width:31px;height:31px;background:#e7eee4;border-radius:50%;color:var(--green);font:700 13px var(--display)}
+.learn-how-step strong{display:block;margin:1px 0 4px;font:700 14px var(--display)}
+.learn-how-step p{font-size:12px;line-height:1.5;color:var(--muted);margin:0}
+.lesson-catalog{padding-top:57px;padding-bottom:55px}
+.lesson-section-heading{align-items:center}
+.lesson-section-heading h2{font-size:38px}
+.lesson-section-intro{font-size:14px;line-height:1.6;color:var(--muted);margin:10px 0 0}
+.course-progress{padding:12px 16px;border:1px solid var(--line);border-radius:7px;background:#fff}
+.course-progress strong{font-size:25px}
+.course-progress>span{font-size:12px}
+.lesson-toolbar{align-items:center;margin-bottom:24px}
+.lesson-filters{gap:8px}
+.filter-chip{padding:10px 15px;font-size:12px}
+.lesson-search{height:42px;min-width:230px}
+.lesson-search input{font-size:13px;padding-left:13px}
+.lesson-search button{font-size:24px}
+.lesson-grid{gap:20px}
+.lesson-card{border-radius:9px}
+.lesson-card-art{height:182px}
+.lesson-card-category{font-size:10px;padding:7px 11px}
+.lesson-card-image{background:#f5f3e5}
+.lesson-card-copy{padding:19px 19px 14px}
+.lesson-card-meta{font-size:10px;letter-spacing:.5px}
+.lesson-card-copy h3{font-size:19px;margin-top:12px}
+.lesson-card-copy p{font-size:13px;line-height:1.6;min-height:63px}
+.lesson-card-footer{padding:13px 19px}
+.lesson-source,.lesson-open,.lesson-done{font-size:11px}
+.lesson-start-label{position:absolute;z-index:3;top:11px;right:12px;background:var(--green);color:white;border-radius:20px;padding:6px 9px;font-size:9px;font-weight:800;letter-spacing:.7px}
+.lesson-art-image .lesson-start-label{top:auto;bottom:11px;left:12px;right:auto;background:#fff;color:var(--green)}
+.lesson-art-image .lesson-card-image{padding-top:13px;padding-bottom:3px}
+.lesson-art-image:before,.lesson-art-image:after{display:none!important}
+.isl-note{gap:13px;margin-top:25px;padding:17px 19px;border-radius:7px}
+.isl-note-icon{width:22px;height:22px;font-size:13px}
+.isl-note p{font-size:13px;line-height:1.65}
+.official-course{padding-top:34px;padding-bottom:75px}
+.official-course h2{font-size:30px}
+.official-course p{font-size:13px}
+.official-course .text-link{font-size:13px}
+.official-course-mark{min-width:220px}
+.lesson-detail{max-width:1060px;padding-top:32px;padding-bottom:78px}
+.breadcrumb{font-size:12px;margin-bottom:30px}
+.lesson-detail-header h1{font-size:clamp(38px,4vw,50px);letter-spacing:-2px}
+.lesson-detail-summary{font-size:16px;line-height:1.65;max-width:650px}
+.lesson-section-label{display:flex;gap:13px;align-items:center;margin:33px 0 16px}
+.lesson-section-icon{flex:none;display:grid;place-items:center;width:39px;height:39px;border-radius:50%;background:#e9eee6;color:var(--green);font-size:11px;font-weight:800}
+.lesson-section-label h2{margin:0 0 4px;font:700 20px var(--display);letter-spacing:-.4px}
+.lesson-section-label p{margin:0;color:var(--muted);font-size:13px;line-height:1.5}
+.lesson-visual-guide,.lesson-video-section{margin-top:25px}
+.lesson-visual-guide .lesson-section-label,.lesson-video-section .lesson-section-label{margin-top:0}
+.lesson-sign-image{margin-top:0;padding:12px;border-radius:9px}
+.lesson-sign-image img{max-height:1080px;object-fit:contain}
+.lesson-sign-image figcaption{font-size:12px;padding:12px 8px 3px}
+.image-expand-label{font-size:12px}
+.lesson-video-wrap{border-radius:9px}
+.playlist-hint{margin:11px 2px 0;font-size:12px;line-height:1.6;color:var(--muted)}
+.lesson-detail-columns{grid-template-columns:minmax(0,1fr) 300px;gap:48px;padding-top:39px}
+.lesson-notes .eyebrow,.lesson-practice-panel .eyebrow{font-size:10px;letter-spacing:1.1px}
+.lesson-notes h2{font-size:25px;margin:12px 0 15px}
+.lesson-rich-text{font-size:15px;line-height:1.8;color:#535d55}
+.lesson-rich-text p{margin-bottom:15px}
+.official-source-link{font-size:13px;margin-top:12px}
+.lesson-practice-panel{padding:23px;border-radius:9px}
+.lesson-practice-panel h2{font-size:21px;margin:13px 0 9px}
+.lesson-practice-panel p{font-size:13px;line-height:1.65}
+.lesson-action-button{font-size:12px;padding:14px 13px}
+.lesson-complete-button{font-size:12px;padding:12px}
+.practice-stats,.practice-private-note{font-size:11px;line-height:1.6}
+.lesson-next{margin-top:42px;padding-top:20px}
+.lesson-next a{font-size:12px}
+@media(max-width:850px){.learn-welcome{gap:32px}.learn-welcome-copy{padding-left:0}.learn-how{grid-template-columns:160px 1fr;gap:20px}.learn-how-steps{gap:12px}.lesson-detail-columns{grid-template-columns:minmax(0,1fr) 265px;gap:28px}}
+@media(max-width:650px){.learn-welcome{display:flex;flex-direction:column;align-items:stretch;gap:26px;padding:42px 20px 35px}.learn-welcome-copy h1{font-size:44px;letter-spacing:-2.6px}.learn-welcome-text{font-size:15px}.learn-welcome-copy .button{width:100%;justify-content:space-between}.learn-welcome-image{max-height:280px;border-radius:9px}.learn-welcome-image>img{height:280px;padding:10px 22px 43px}.welcome-image-label{padding:13px 15px}.welcome-image-label strong{font-size:13px}.welcome-image-label>span{font-size:8px}.learn-how{display:block;padding:24px 20px;margin:0 20px;width:auto;border:1px solid var(--line);border-radius:9px;background:#fff}.learn-how-title h2{font-size:21px}.learn-how-steps{grid-template-columns:1fr;gap:16px;margin-top:20px}.learn-how-step p{font-size:12px}.lesson-catalog{padding:48px 20px 43px}.lesson-section-heading{gap:14px;align-items:flex-start}.lesson-section-heading h2{font-size:31px}.lesson-section-intro{font-size:13px;max-width:260px}.course-progress{padding:9px 10px;white-space:nowrap}.course-progress strong{font-size:19px}.course-progress>span{font-size:9px}.lesson-toolbar{display:flex;flex-direction:column;align-items:stretch;gap:13px}.lesson-filters{overflow-x:auto;flex-wrap:nowrap;padding-bottom:3px}.filter-chip{flex:none;font-size:11px}.lesson-search{min-width:0;width:100%}.lesson-grid{grid-template-columns:1fr;gap:14px}.lesson-card-art{height:210px}.lesson-card-copy p{min-height:0}.lesson-card-footer{min-height:48px}.isl-note{padding:14px}.isl-note p{font-size:12px}.official-course{padding:22px 20px 52px}.official-course-mark{display:none}.official-course h2{font-size:25px}.lesson-detail{padding:24px 20px 53px}.breadcrumb{margin-bottom:23px}.lesson-detail-header h1{font-size:36px;letter-spacing:-1.6px}.lesson-detail-summary{font-size:14px}.lesson-section-label{align-items:flex-start}.lesson-section-label h2{font-size:18px}.lesson-section-label p{font-size:12px}.lesson-sign-image{padding:7px}.lesson-sign-image figcaption{font-size:10px}.image-expand-label{font-size:10px}.lesson-detail-columns{grid-template-columns:1fr;gap:25px;padding-top:27px}.lesson-practice-panel{order:-1}.lesson-notes h2{font-size:22px}.lesson-rich-text{font-size:14px}.lesson-action-button{font-size:12px}.lesson-next{flex-wrap:wrap;gap:13px}.lesson-next a{font-size:11px}}

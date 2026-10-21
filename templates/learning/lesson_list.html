@@ -1,0 +1,58 @@
+{% extends 'base.html' %}
+{% load static %}
+{% block title %}Learn Indian Sign Language · SignBridge{% endblock %}
+{% block extra_head %}<link rel="stylesheet" href="{% static 'css/learning.css' %}">{% endblock %}
+{% block content %}
+<section class="learn-welcome page-wrap">
+  <div class="learn-welcome-copy">
+    <div class="eyebrow"><span class="eyebrow-dot"></span> BEGINNER LESSONS · INDIAN SIGN LANGUAGE</div>
+    <h1>Start with hello.<br><span class="serif-accent">Learn at your pace.</span></h1>
+    <p class="learn-welcome-text">New to sign language? Begin with the alphabet, then learn greetings and how to introduce yourself. Each lesson includes an ISLRTC video and simple practice steps.</p>
+    <a class="button button-large" href="{% url 'learning:lesson_detail' 'isl-alphabet' %}">Start with the alphabet <span aria-hidden="true">↗</span></a>
+    <div class="learn-language-note"><span>IN</span><span><strong>Indian Sign Language (ISL)</strong><br>Lessons use resources from ISLRTC.</span></div>
+  </div>
+  <a class="learn-welcome-image" href="{% url 'learning:lesson_detail' 'isl-alphabet' %}" aria-label="Start the Indian Sign Language alphabet lesson">
+    <img src="{% static 'images/isl-alphabet-chart.jpg' %}" alt="ISLRTC visual chart of A to Z hand signs">
+    <span class="welcome-image-label"><span>YOUR FIRST LESSON</span><strong>The ISL alphabet <b>↗</b></strong></span>
+  </a>
+</section>
+
+<section class="learn-how page-wrap" aria-label="How learning works">
+  <div class="learn-how-title"><span>THREE SIMPLE STEPS</span><h2>Learn by watching<br>and trying.</h2></div>
+  <div class="learn-how-steps">
+    <div class="learn-how-step"><span class="learn-step-number">1</span><div><strong>Watch</strong><p>See the sign in an ISLRTC lesson.</p></div></div>
+    <div class="learn-how-step"><span class="learn-step-number">2</span><div><strong>Try it</strong><p>Follow along at your own pace.</p></div></div>
+    <div class="learn-how-step"><span class="learn-step-number">3</span><div><strong>Keep track</strong><p>Sign in to save your practice.</p></div></div>
+  </div>
+</section>
+
+<section class="lesson-catalog page-wrap">
+  <div class="lesson-section-heading">
+    <div><div class="eyebrow">YOUR BEGINNER PATH</div><h2>Pick a <span class="serif-accent">lesson.</span></h2><p class="lesson-section-intro">Start at the beginning, or choose a topic that interests you.</p></div>
+    {% if user.is_authenticated %}<div class="course-progress"><strong>{{ completed_count }} <span>/</span> {{ all_lessons_count }}</strong><span>lessons complete</span></div>{% endif %}
+  </div>
+  <div class="lesson-toolbar">
+    <nav class="lesson-filters" aria-label="Filter lessons by topic">
+      <a class="filter-chip {% if not active_category %}is-active{% endif %}" href="{% url 'learning:lesson_list' %}{% if search_query %}?q={{ search_query|urlencode }}{% endif %}">All lessons</a>
+      {% for category_value in categories %}<a class="filter-chip {% if active_category == category_value %}is-active{% endif %}" href="?category={{ category_value|urlencode }}{% if search_query %}&q={{ search_query|urlencode }}{% endif %}">{% if category_value == 'alphabet' %}Alphabet{% elif category_value == 'greetings' %}Greetings{% else %}Everyday words{% endif %}</a>{% endfor %}
+    </nav>
+    <form method="get" class="lesson-search" role="search"><label class="visually-hidden" for="lesson-search">Search lessons</label><input id="lesson-search" name="q" type="search" placeholder="Search lessons" value="{{ search_query }}"><button type="submit" aria-label="Search lessons">⌕</button></form>
+  </div>
+  <div class="lesson-grid">
+    {% for lesson in lessons %}
+      <article class="lesson-card {% if forloop.first %}lesson-card-first{% endif %}">
+        <a class="lesson-card-main" href="{% url 'learning:lesson_detail' lesson.slug %}">
+          <div class="lesson-card-art lesson-art-{{ lesson.category }}{% if lesson.image_path %} lesson-art-image{% endif %}">
+            {% if forloop.first %}<span class="lesson-start-label">START HERE</span>{% endif %}
+            {% if lesson.image_path %}<img class="lesson-card-image" src="{% static lesson.image_path %}" alt="ISL alphabet hand signs from A to Z">{% else %}<span class="lesson-card-emoji" aria-hidden="true">{% if lesson.category == 'greetings' %}👋{% else %}💬{% endif %}</span><span class="lesson-art-label">{% if lesson.category == 'greetings' %}SAY HELLO{% else %}NEW WORDS{% endif %}</span>{% endif %}
+          </div>
+          <div class="lesson-card-copy"><div class="lesson-card-meta"><span>{{ lesson.get_category_display }}</span><span>{{ lesson.duration_minutes }} min</span></div><h3>{{ lesson.title }}</h3><p>{{ lesson.summary }}</p></div>
+        </a>
+        <div class="lesson-card-footer">{% if user.is_authenticated and lesson.id in completed_ids %}<span class="lesson-done">✓ Lesson complete</span>{% else %}<span class="lesson-source">ISLRTC video lesson</span><a href="{% url 'learning:lesson_detail' lesson.slug %}" class="lesson-open">View lesson <span aria-hidden="true">↗</span></a>{% endif %}</div>
+      </article>
+    {% empty %}<div class="lesson-empty"><span>✳</span><h3>No lessons found</h3><p>Try a different search, or show all the lessons.</p><a class="button" href="{% url 'learning:lesson_list' %}">Show all lessons</a></div>{% endfor %}
+  </div>
+  <aside class="isl-note"><span class="isl-note-icon">i</span><p><strong>About these lessons</strong><br>These lessons teach Indian Sign Language (ISL). ISL has its own grammar, so English and Hindi prompts are there to help you follow the topic; they are not always signed word for word.</p></aside>
+</section>
+<section class="official-course page-wrap"><div class="official-course-copy"><div class="eyebrow">READY TO LEARN MORE?</div><h2>Explore the full ISLRTC course.</h2><p>Continue with lessons on greetings, introductions, everyday vocabulary, and conversations.</p><a href="https://islrtc.nic.in/online-basic-isl-course-in-self-learning-mode/" target="_blank" rel="noopener noreferrer" class="text-link">Visit the free course <span aria-hidden="true">↗</span></a></div><div class="official-course-mark" aria-hidden="true">ISL<span>RTC</span><small>GOVERNMENT OF INDIA COURSE</small></div></section>
+{% endblock %}
