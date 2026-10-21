@@ -1,3 +1,9 @@
+"""Download WLASL video files from the Hugging Face mirror (Voxel51/WLASL), 8 at a time.
+
+    python experiments/download_wlasl_hf.py experiments/hf_wlasl100_files.json datasets/WLASL-100/videos
+
+The JSON maps each WLASL video_id to its path in the mirror. Videos are research-use only (C-UDA).
+"""
 import json, os, shutil, sys
 from concurrent.futures import ThreadPoolExecutor
 from huggingface_hub import hf_hub_download

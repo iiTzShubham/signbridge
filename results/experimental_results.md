@@ -1,11 +1,11 @@
-# A Comparative Study of CNN-LSTM and Vision Transformer Models for Real-Time Sign Language Recognition
+# A Comparative Study of CNN-LSTM and Vision Transformer Models for Real-Time Sign Language Recognition — Experiment 2 (WLASL-100 + ASL Citizen)
 
 ## 1. Experimental Setup
 
-- Dataset: WLASL-100
+- Dataset: WLASL-100 + ASL Citizen (100 words)
 - Classes configured: 100
 - Frames per clip: 16; image size: 224
-- Configured split: stratified; seed(s): [42, 123, 2026]
+- Configured split: combined: WLASL-100 stratified train/val + ASL Citizen official signer-independent train/val/test; WLASL test kept as test_wlasl; seed(s): [42, 123, 2026]
 - Training settings: epochs=150, batch size=8, learning rate=0.0003, pretrained=True
 - Environment: {"platform": "Windows-11-10.0.26220-SP0", "machine": "AMD64", "processor": "AMD64 Family 25 Model 80 Stepping 0, AuthenticAMD", "cpu_count": 16, "memory_bytes": null, "hardware_model": null, "gpu": "NVIDIA GeForce RTX 3060 Laptop GPU", "accelerator": "cuda"}; software: {"python": "3.12.3", "Django": "5.2.18", "torch": "2.11.0+cu128", "torchvision": "0.26.0+cu128", "opencv-python-headless": "4.14.0", "numpy": "2.5.2", "pandas": "3.0.6", "scikit-learn": "1.9.1", "matplotlib": "3.11.2", "python-docx": "1.2.0", "scipy": "1.18.1"}
 
@@ -15,19 +15,29 @@ The saved experiment configuration is `experiment_config.json`. Each complete JS
 
 | Evaluation metric | CNN-LSTM | Vision Transformer | Better result |
 |---|---:|---:|---|
-| Top-1 accuracy (%) | 11.392 ± 1.266 (n=3) | 22.363 ± 2.396 (n=3) | Vision Transformer |
-| Top-5 accuracy (%) | 27.426 ± 2.223 (n=3) | 49.367 ± 2.282 (n=3) | Vision Transformer |
-| Macro precision (%) | 8.507 ± 1.362 (n=3) | 19.609 ± 2.918 (n=3) | Vision Transformer |
-| Macro recall (%) | 10.333 ± 1.528 (n=3) | 21.333 ± 2.566 (n=3) | Vision Transformer |
-| Macro F1-score (%) | 8.558 ± 0.921 (n=3) | 18.642 ± 2.360 (n=3) | Vision Transformer |
-| Average inference latency (ms/clip) | 31.731 ± 1.076 (n=3) | 128.292 ± 0.650 (n=3) | CNN-LSTM |
-| FPS (sampled frames/s) | 504.636 ± 17.396 (n=3) | 124.717 ± 0.632 (n=3) | CNN-LSTM |
+| Top-1 accuracy (%) | 16.598 ± 1.177 (n=3) | 31.398 ± 1.301 (n=3) | Vision Transformer |
+| Top-5 accuracy (%) | 41.877 ± 1.575 (n=3) | 60.489 ± 2.042 (n=3) | Vision Transformer |
+| Macro precision (%) | 15.975 ± 2.143 (n=3) | 32.861 ± 2.587 (n=3) | Vision Transformer |
+| Macro recall (%) | 13.365 ± 1.623 (n=3) | 29.331 ± 1.337 (n=3) | Vision Transformer |
+| Macro F1-score (%) | 12.869 ± 1.756 (n=3) | 28.843 ± 1.677 (n=3) | Vision Transformer |
+| Average inference latency (ms/clip) | 31.805 ± 0.158 (n=3) | 143.216 ± 3.878 (n=3) | CNN-LSTM |
+| FPS (sampled frames/s) | 503.072 ± 2.491 (n=3) | 111.774 ± 3.020 (n=3) | CNN-LSTM |
 | Model checkpoint size (MB) | 101.098 ± 0.001 (n=3) | 381.743 ± 0.000 (n=3) | CNN-LSTM |
-| Training duration (s) | 16.024 ± 1.432 (n=3) | 24.545 ± 3.918 (n=3) | CNN-LSTM |
+| Training duration (s) | 52.766 ± 4.591 (n=3) | 99.647 ± 5.737 (n=3) | CNN-LSTM |
 
 Completed runs: CNN-LSTM 3; Vision Transformer 3.
 
 Metrics are means across successful seeds when there is more than one run; the accompanying `±` is sample standard deviation. A single run is preliminary and does not estimate run-to-run variability.
+
+### Additional test set: `test_wlasl` (158 clips)
+
+| Evaluation metric | CNN-LSTM | Vision Transformer | Better result |
+|---|---:|---:|---|
+| Top-1 accuracy (%) | 21.097 ± 2.923 (n=3) | 34.388 ± 1.462 (n=3) | Vision Transformer |
+| Top-5 accuracy (%) | 47.046 ± 2.991 (n=3) | 61.814 ± 2.558 (n=3) | Vision Transformer |
+| Macro precision (%) | 19.117 ± 1.592 (n=3) | 31.417 ± 1.956 (n=3) | Vision Transformer |
+| Macro recall (%) | 20.667 ± 3.686 (n=3) | 36.000 ± 1.803 (n=3) | Vision Transformer |
+| Macro F1-score (%) | 18.010 ± 2.474 (n=3) | 31.139 ± 1.614 (n=3) | Vision Transformer |
 
 ## 3. Comparative Analysis
 
@@ -44,7 +54,7 @@ Multiple runs are available for both models. Mean and standard deviation are rep
 ## 6. Limitations
 
 - Dataset availability, split integrity, class balance, and signer overlap must be verified from the recorded manifest and run metadata.
-- Results are limited to the configured WLASL-100 data, preprocessing, architecture settings, seeds, and available hardware.
+- Results are limited to the configured WLASL-100 + ASL Citizen (100 words) data, preprocessing, architecture settings, seeds, and available hardware.
 - The latency measure excludes decoding and preprocessing and should not be interpreted as end-to-end real-time performance.
 - Statistical significance is not reported unless an appropriate analysis is separately implemented and justified.
 

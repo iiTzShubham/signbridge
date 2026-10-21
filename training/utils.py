@@ -1,3 +1,6 @@
+"""Small helpers: make runs repeatable (seeds), pick the device (CUDA GPU / Apple MPS / CPU), and
+measure peak memory.
+"""
 import os
 import random
 

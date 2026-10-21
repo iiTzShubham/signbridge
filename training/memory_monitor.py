@@ -1,3 +1,5 @@
+"""Background thread that samples memory use every 100 ms during a run and keeps the peak value.
+"""
 import threading
 import time
 

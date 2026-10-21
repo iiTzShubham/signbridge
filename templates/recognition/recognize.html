@@ -5,7 +5,7 @@
 {% block content %}
 <section class="tool-page">
   <header class="tool-hero recognize-hero"><div><p class="tool-kicker">SIGNBRIDGE · CAMERA LAB</p><h1>Let’s read a sign<br><em>together.</em></h1><p>Show a short sign to your camera or upload a clip. A trained model will suggest the closest sign it knows.</p></div><div class="tool-hero-illustration" aria-hidden="true"><span>✋</span><i>● &nbsp; ● &nbsp; ●</i></div></header>
-  <div class="tool-note tool-note-warm"><span>ⓘ</span><p><strong>About recognition right now</strong><br>The camera and video input are ready. A prediction needs a trained model checkpoint. The current experiment config uses WLASL (American Sign Language); it will not recognize ISL reliably. ISL recognition needs an ISL-trained model.</p></div>
+  <div class="tool-note tool-note-warm"><span>ⓘ</span><p><strong>What this can recognise</strong><br>The models know {{ vocabulary|length|default:"100" }} single <b>American Sign Language (ASL) words</b>. They do not recognise fingerspelled letters (like “C”), sentences, or Indian Sign Language. For best results: sign one word, keep your head, hands and upper body in the frame, use good light and a plain background, and start signing when the countdown ends. Always check the top-3 list; this is a research prototype and it often makes mistakes.</p>{% if vocabulary %}<details class="vocab-list"><summary>Show the {{ vocabulary|length }} words</summary><p>{{ vocabulary|join:", " }}</p></details>{% endif %}</div>
 
   <div class="recognition-layout">
     <section class="camera-card"><div class="tool-card-heading"><div><span class="tool-overline">YOUR CLIP</span><h2>Use your camera</h2></div><span class="live-badge"><i></i> PRIVATE PREVIEW</span></div>
@@ -32,6 +32,14 @@
   </div>
 </section>
 <form id="camera-csrf" hidden>{% csrf_token %}</form>
+{% comment %}
+Camera flow (all in the browser until "Capture sign"):
+  Start camera -> asks permission and shows your webcam preview.
+  Capture sign -> 3-2-1 countdown, then grabs 16 JPEG frames over ~2.5 s and POSTs them to /recognize/
+                  with Accept: application/json. The server picks evenly spaced frames, runs the chosen
+                  model and returns the word, confidence and top-3, which are drawn into the result card.
+Uploaded videos use the normal form POST instead and are processed in memory (never saved).
+{% endcomment %}
 <script>
 (() => {
   const video = document.getElementById("camera-preview"), placeholder = document.getElementById("camera-placeholder");

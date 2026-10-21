@@ -1,3 +1,8 @@
+"""Experiment helper (not used by the main pipeline): pre-compute ResNet-50 and ViT frame features
+for every WLASL-100 clip, with several augmented views, so many training settings can be compared quickly.
+
+    python experiments/extract_features.py <out.pt> <views> [none|center]
+"""
 import sys, os, numpy as np, pandas as pd, torch, cv2, time
 sys.path.insert(0, os.getcwd())
 from torch.utils.data import Dataset, DataLoader

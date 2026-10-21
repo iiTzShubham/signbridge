@@ -1,5 +1,16 @@
 #!/usr/bin/env python3
-"""Run paired CNN-LSTM and temporal-ViT experiments and write honest artifacts."""
+"""Main entry point: train and test BOTH models with the same data, settings and seeds.
+
+    python -m training.compare_models --config experiment_config.json
+
+What it does:
+  1. Loads the config and checks everything needed is present (Python packages, manifest, videos).
+     If something is missing it writes a clear "not started" report instead of fake numbers.
+  2. For each model (cnn_lstm, vit_temporal) and each seed, calls training.engine.run_experiment().
+  3. Saves one JSON per run in <results_dir>/metrics/, then builds the summary table
+     (model_comparison.csv), report (experimental_results.md/.docx) and charts (figures/).
+  4. Appends what happened to <results_dir>/run_log.txt (never overwritten, so failed tries stay visible).
+"""
 from __future__ import annotations
 
 import argparse
@@ -74,7 +85,7 @@ def main():
         try:
             from training.engine import load_manifest_context, run_experiment, validate_training_manifest
             frame, label_map = load_manifest_context(manifest)
-            validate_training_manifest(frame, label_map, int(config["num_classes"]))
+            validate_training_manifest(frame, label_map, int(config["num_classes"]), bool(config.get("require_all_classes_in_eval", True)))
             missing_videos = [str(row.video_path) for row in frame.itertuples() if not (dataset_root / str(row.video_path)).is_file()]
             if missing_videos:
                 blockers.append(f"{len(missing_videos)} manifest video paths do not exist under {dataset_root}; example: {missing_videos[0]}")

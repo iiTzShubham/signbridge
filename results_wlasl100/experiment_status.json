@@ -1,0 +1,43 @@
+{
+  "generated_at": "2026-10-21T07:02:35.668220+00:00",
+  "status": "complete",
+  "blockers": [],
+  "runs": [
+    {
+      "model": "cnn_lstm",
+      "seed": 42,
+      "status": "complete",
+      "metrics_file": "metrics\\cnn_lstm_seed_42_metrics.json"
+    },
+    {
+      "model": "cnn_lstm",
+      "seed": 123,
+      "status": "complete",
+      "metrics_file": "metrics\\cnn_lstm_seed_123_metrics.json"
+    },
+    {
+      "model": "cnn_lstm",
+      "seed": 2026,
+      "status": "complete",
+      "metrics_file": "metrics\\cnn_lstm_seed_2026_metrics.json"
+    },
+    {
+      "model": "vit_temporal",
+      "seed": 42,
+      "status": "complete",
+      "metrics_file": "metrics\\vit_temporal_seed_42_metrics.json"
+    },
+    {
+      "model": "vit_temporal",
+      "seed": 123,
+      "status": "complete",
+      "metrics_file": "metrics\\vit_temporal_seed_123_metrics.json"
+    },
+    {
+      "model": "vit_temporal",
+      "seed": 2026,
+      "status": "complete",
+      "metrics_file": "metrics\\vit_temporal_seed_2026_metrics.json"
+    }
+  ]
+}

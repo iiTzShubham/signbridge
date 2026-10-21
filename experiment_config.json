@@ -1,9 +1,9 @@
 {
-  "experiment_title": "A Comparative Study of CNN-LSTM and Vision Transformer Models for Real-Time Sign Language Recognition",
-  "dataset_name": "WLASL-100",
-  "dataset_root": "datasets/WLASL-100",
+  "experiment_title": "A Comparative Study of CNN-LSTM and Vision Transformer Models for Real-Time Sign Language Recognition \u2014 Experiment 2 (WLASL-100 + ASL Citizen)",
+  "dataset_name": "WLASL-100 + ASL Citizen (100 words)",
+  "dataset_root": "datasets",
   "annotation_file": "datasets/WLASL-100/WLASL_v0.3.json",
-  "manifest_file": "datasets/WLASL-100/manifest.csv",
+  "manifest_file": "datasets/combined/manifest.csv",
   "results_dir": "results",
   "num_classes": 100,
   "num_frames": 16,
@@ -29,7 +29,7 @@
   "dropout": 0.3,
   "early_stopping_patience": 25,
   "warmup_inference_batches": 5,
-  "split_mode": "stratified",
+  "split_mode": "combined: WLASL-100 stratified train/val + ASL Citizen official signer-independent train/val/test; WLASL test kept as test_wlasl",
   "test_size": 0.15,
   "validation_size": 0.15,
   "random_seed": 42,
@@ -38,5 +38,9 @@
   "head_batch_size": 32,
   "label_smoothing": 0.1,
   "augmentation_seed": 0,
-  "checkpoint_metric": "val_top1"
+  "checkpoint_metric": "val_top1",
+  "require_all_classes_in_eval": false,
+  "extra_test_splits": [
+    "test_wlasl"
+  ]
 }

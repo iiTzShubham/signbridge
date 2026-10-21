@@ -1,4 +1,14 @@
-"""Load trained recognition checkpoints on demand; never return a demo prediction."""
+"""Turn an uploaded video (or camera frames) into a predicted sign, using a trained checkpoint.
+
+Flow for one request:
+  1. _load_model(): read experiment_config.json, load results/checkpoints/<model>/seed_<seed>.pth and
+     the word list (label_map.json next to the manifest). Cached, so it only happens once per model.
+  2. _decode_video() / _decode_images(): pick `num_frames` evenly spaced frames, resize to 224x224, RGB.
+  3. predict_upload(): normalise the frames like training did, run the model, turn scores into
+     percentages (softmax) and return the best word, its confidence and the top 3.
+If no trained checkpoint exists, it raises RecognitionUnavailable with a clear message - it never
+makes up a prediction.
+"""
 import json
 import tempfile
 import time
@@ -13,7 +23,7 @@ class RecognitionUnavailable(RuntimeError):
     pass
 
 
-@lru_cache(maxsize=2)
+@lru_cache(maxsize=2)  # keep both models in memory after the first request
 def _load_model(model_name):
     root = settings.BASE_DIR
     config_path = root / "experiment_config.json"
@@ -49,9 +59,17 @@ def _load_model(model_name):
     return model, labels, device, config, torch, synchronize
 
 
-def _decode_video(upload, frame_count, image_size):
+def _prepare_frame(frame, image_size):
+    """Resize + BGR->RGB exactly like training (datasets/video_dataset.py), so the model sees the same kind of input."""
     import cv2
-    import numpy as np
+    resized = cv2.resize(frame, (image_size, image_size), interpolation=cv2.INTER_AREA)
+    return cv2.cvtColor(resized, cv2.COLOR_BGR2RGB)
+
+
+def _decode_video(upload, frame_count, image_size):
+    """Read an uploaded video and return `frame_count` evenly spaced, preprocessed frames."""
+    import cv2
+    from datasets.frame_sampling import uniform_frame_indices
     suffix = Path(upload.name).suffix or ".mp4"
     # Windows cannot reopen a file that is still open, so close it before OpenCV reads it.
     with tempfile.NamedTemporaryFile(suffix=suffix, delete_on_close=False) as temp:
@@ -63,39 +81,47 @@ def _decode_video(upload, frame_count, image_size):
             total = int(capture.get(cv2.CAP_PROP_FRAME_COUNT))
             if total < 1:
                 raise RecognitionUnavailable("This video could not be opened. Try an MP4 or use the camera capture.")
-            indices = np.linspace(0, total - 1, num=frame_count, dtype=int)
-            decoded = []
-            for index in indices:
-                capture.set(cv2.CAP_PROP_POS_FRAMES, int(index))
-                ok, frame = capture.read()
-                if not ok:
-                    continue
-                decoded.append(cv2.cvtColor(cv2.resize(frame, (image_size, image_size)), cv2.COLOR_BGR2RGB))
-            if not decoded:
+            wanted = uniform_frame_indices(total, frame_count)  # same frame choice as training
+            needed = set(int(i) for i in wanted)
+            kept = {}
+            # Read frames in order (seeking is unreliable for some video formats) and keep only the ones we need.
+            for index in range(int(wanted.max()) + 1):
+                if not capture.grab():
+                    break
+                if index in needed:
+                    ok, frame = capture.retrieve()
+                    if ok:
+                        kept[index] = _prepare_frame(frame, image_size)
+            if not kept:
                 raise RecognitionUnavailable("No frames could be read from this video.")
-            while len(decoded) < frame_count:
-                decoded.append(decoded[-1].copy())
-            return decoded[:frame_count]
+            # If the file reported more frames than it really has, reuse the last frame that was read.
+            frames, last = [], None
+            for index in wanted:
+                last = kept.get(int(index), last if last is not None else next(iter(kept.values())))
+                frames.append(last)
+            return frames
         finally:
             capture.release()
 
 
 def _decode_images(uploads, frame_count, image_size):
+    """Camera mode: the browser sends ~16 JPEG frames; pick `frame_count` evenly spaced ones."""
     import cv2
     import numpy as np
+    from datasets.frame_sampling import uniform_frame_indices
     decoded = []
     for upload in uploads:
         content = upload.read()
         image = cv2.imdecode(np.frombuffer(content, dtype=np.uint8), cv2.IMREAD_COLOR)
         if image is not None:
-            decoded.append(cv2.cvtColor(cv2.resize(image, (image_size, image_size)), cv2.COLOR_BGR2RGB))
+            decoded.append(_prepare_frame(image, image_size))
     if not decoded:
         raise RecognitionUnavailable("The camera frames could not be read. Please try capturing again.")
-    indices = np.linspace(0, len(decoded) - 1, num=frame_count, dtype=int)
-    return [decoded[index] for index in indices]
+    return [decoded[int(index)] for index in uniform_frame_indices(len(decoded), frame_count)]
 
 
 def predict_upload(model_name, video=None, images=None):
+    """Predict the sign in an uploaded `video` file or a list of camera `images` (JPEG frames)."""
     try:
         import numpy as np
         import torch
@@ -109,6 +135,7 @@ def predict_upload(model_name, video=None, images=None):
         frames = _decode_images(images, frame_count, image_size)
     else:
         raise RecognitionUnavailable("Choose a video clip or capture a few frames with your camera.")
+    # Same preprocessing as training: pixels 0-1, then ImageNet mean/std normalisation.
     array = np.asarray(frames, dtype=np.float32) / 255.0
     tensor = torch.from_numpy(array).permute(0, 3, 1, 2)
     mean = torch.tensor((0.485, 0.456, 0.406)).view(1, 3, 1, 1)
@@ -118,7 +145,7 @@ def predict_upload(model_name, video=None, images=None):
     started = time.perf_counter()
     try:
         with torch.inference_mode():
-            probabilities = torch.softmax(model(tensor), dim=1)[0]
+            probabilities = torch.softmax(model(tensor), dim=1)[0]  # scores -> percentages that add up to 100
     except RuntimeError as exc:
         message = str(exc).lower()
         if getattr(device, "type", "") != "mps" or not any(term in message for term in ("mps", "out of memory", "not implemented")):

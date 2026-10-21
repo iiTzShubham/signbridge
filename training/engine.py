@@ -1,3 +1,18 @@
+"""Training and testing engine shared by both models (so both are treated exactly the same).
+
+The big picture for one run (one model + one random seed):
+  1. Read the clip list (manifest) and check it is usable.
+  2. Build the model (CNN-LSTM or ViT).
+  3. If the backbone is frozen and cache_features is on: run every training/validation clip through
+     the backbone ONCE and save the per-frame features to disk (results/feature_cache/).
+     Training then only needs the small temporal part, so an epoch takes ~1 second instead of minutes.
+  4. Train for up to `epochs` epochs. After each epoch, check the validation clips and keep the best
+     checkpoint. Stop early if validation has not improved for `early_stopping_patience` epochs.
+  5. Load the best checkpoint and test it on the held-out test clips using the FULL model on raw video,
+     timing every prediction (latency / FPS). Also test any extra test sets (extra_test_splits).
+  6. Return everything (accuracy, per-word scores, confusion matrix, timings, sizes) as a dictionary,
+     which compare_models.py saves to results/metrics/<model>_seed_<seed>_metrics.json.
+"""
 import csv
 import gc
 import hashlib
@@ -19,6 +34,7 @@ from .utils import peak_memory_gib, seed_everything, select_device, synchronize
 
 
 def load_manifest_context(manifest_path):
+    """Read the manifest CSV and the word -> class-number map (label_map.json next to it)."""
     import pandas as pd
     frame = pd.read_csv(manifest_path).fillna("")
     labels = sorted(frame["label"].astype(str).unique())
@@ -34,7 +50,12 @@ def load_manifest_context(manifest_path):
     return frame, label_to_index
 
 
-def validate_training_manifest(frame, label_to_index, expected_classes):
+def validate_training_manifest(frame, label_to_index, expected_classes, require_all_classes_in_eval=True):
+    """Stop early if the clip list cannot give a fair train/validate/test run.
+
+    Training must see every word. Validation and test may miss a few words only when
+    require_all_classes_in_eval is False (e.g. ASL Citizen has no clips for "forget"/"short").
+    """
     if len(label_to_index) != expected_classes:
         raise RuntimeError(f"Expected {expected_classes} classes in the manifest; found {len(label_to_index)}.")
     if not {"train", "val", "test"}.issubset(set(frame["split"])):
@@ -42,7 +63,9 @@ def validate_training_manifest(frame, label_to_index, expected_classes):
     classes = set(label_to_index)
     for split in ("train", "val", "test"):
         found = set(frame.loc[frame.split == split, "label"].astype(str))
-        if found != classes:
+        if found - classes:
+            raise RuntimeError(f"Split {split!r} has labels missing from the label map: {sorted(found - classes)[:5]}")
+        if found != classes and (split == "train" or require_all_classes_in_eval):
             raise RuntimeError(f"Split {split!r} does not contain all {len(classes)} classes ({len(classes-found)} missing).")
 
 
@@ -68,6 +91,8 @@ def _loader(config, root, manifest, split, label_to_index, seed, shuffle=False):
 
 
 class _ViewsDataset(Dataset):
+    """Gives each clip as several versions ("views"): view 0 unchanged, others slightly cropped,
+    shifted in time or mirrored. Used once, when the features are cached."""
     def __init__(self, base, views, seed):
         self.base, self.views, self.seed = base, views, seed
 
@@ -94,6 +119,10 @@ class _FeatureDataset(Dataset):
 
 
 def _cached_features(model, config, root, manifest, split, label_to_index, views, device, cache_path):
+    """Run the frozen backbone over every clip once and save the features (or load them if saved).
+
+    Returns (features, labels) with features shaped [views, clips, frames, feature_size].
+    """
     if cache_path.is_file():
         cached = torch.load(cache_path, weights_only=True)
         print(f"Loaded cached {split} features: {cache_path.name}", flush=True)
@@ -118,6 +147,11 @@ def _cached_features(model, config, root, manifest, split, label_to_index, views
 
 
 def _epoch(model, loader, criterion, device, optimizer=None, forward=None):
+    """One pass over a data split. With an optimizer it trains; without one it only measures.
+
+    `forward` lets us call model.forward_features (cached features) instead of the full model.
+    Returns (average loss, accuracy as a 0-1 fraction).
+    """
     forward = forward or model
     training = optimizer is not None
     model.train(training)
@@ -142,6 +176,10 @@ def _epoch(model, loader, criterion, device, optimizer=None, forward=None):
 
 
 def _training_loop(model_name, model, train_loader, val_loader, device, config, checkpoint_path, history_path, forward=None):
+    """Train epoch by epoch, save the best checkpoint (by the chosen validation metric), stop early.
+
+    Every epoch's loss/accuracy is written to a CSV (results/curves/...) for the training-curve plots.
+    """
     criterion = nn.CrossEntropyLoss(label_smoothing=float(config.get("label_smoothing", 0.0)))
     trainable = [parameter for parameter in model.parameters() if parameter.requires_grad]
     optimizer = torch.optim.AdamW(trainable, lr=float(config["learning_rate"]), weight_decay=float(config["weight_decay"]))
@@ -194,6 +232,11 @@ def _training_loop(model_name, model, train_loader, val_loader, device, config, 
 
 
 def _evaluate(model, loader, device, label_names, warmup_batches):
+    """Test the full model on raw video clips and measure accuracy and speed.
+
+    Speed: a few warm-up batches are run first (the GPU is slow on its very first calls), then each
+    forward pass is timed with GPU synchronisation. Video decoding is NOT included in the timing.
+    """
     model.eval()
     iterator = iter(loader)
     with torch.no_grad():
@@ -230,6 +273,10 @@ def _evaluate(model, loader, device, label_names, warmup_batches):
         y_true, y_pred, labels=list(range(len(label_names))), target_names=label_names,
         output_dict=True, zero_division=0,
     )
+    # Macro averages only over words that actually occur in this test set; a word with no
+    # test clips would otherwise count as a 0 score and unfairly pull the average down.
+    present = sorted(set(y_true))
+    macro = classification_report(y_true, y_pred, labels=present, output_dict=True, zero_division=0)["macro avg"]
     matrix = confusion_matrix(y_true, y_pred, labels=list(range(len(label_names))))
     latency = float(np.mean(batch_times) * 1000)
     elapsed = float(sum(batch_times))
@@ -240,9 +287,10 @@ def _evaluate(model, loader, device, label_names, warmup_batches):
         "predicted_labels": y_pred,
         "top5_accuracy_pct": round(top5_correct * 100, 6) if len(label_names) >= 5 else None,
         "top1_accuracy_pct": round(report["accuracy"] * 100, 6),
-        "macro_precision_pct": round(report["macro avg"]["precision"] * 100, 6),
-        "macro_recall_pct": round(report["macro avg"]["recall"] * 100, 6),
-        "macro_f1_pct": round(report["macro avg"]["f1-score"] * 100, 6),
+        "macro_precision_pct": round(macro["precision"] * 100, 6),
+        "macro_recall_pct": round(macro["recall"] * 100, 6),
+        "macro_f1_pct": round(macro["f1-score"] * 100, 6),
+        "classes_in_test": len(present),
         "per_class": [
             {"label": label, "precision_pct": round(report[label]["precision"] * 100, 6),
              "recall_pct": round(report[label]["recall"] * 100, 6),
@@ -259,10 +307,12 @@ def _evaluate(model, loader, device, label_names, warmup_batches):
 
 
 def run_experiment(model_name, seed, config, project_root, label_to_index, device_name=None):
+    """Train + test one model with one seed and return all measurements (see module docstring)."""
     manifest = (project_root / config["manifest_file"]).resolve()
     dataset_root = (project_root / config["dataset_root"]).resolve()
     frame, _ = load_manifest_context(manifest)
-    validate_training_manifest(frame, label_to_index, int(config["num_classes"]))
+    validate_training_manifest(frame, label_to_index, int(config["num_classes"]),
+                               bool(config.get("require_all_classes_in_eval", True)))
     seed_everything(seed)
     device = select_device(device_name or config.get("device", "auto"))
     print(f"{model_name} seed={seed} device={device}", flush=True)
@@ -306,6 +356,15 @@ def run_experiment(model_name, seed, config, project_root, label_to_index, devic
             model, loaders["test"], device, list(label_to_index.keys()),
             int(config.get("warmup_inference_batches", 5)),
         )
+        # Optional extra test sets (e.g. "test_wlasl"), evaluated with the same chosen checkpoint.
+        extra_tests = {}
+        for split in config.get("extra_test_splits", []):
+            loader = _loader(config, dataset_root, manifest, split, label_to_index, seed)
+            result = _evaluate(model, loader, device, list(label_to_index.keys()), 0)
+            extra_tests[split] = {
+                "test_videos": len(result["test_video_ids"]),
+                "metrics": {key: value for key, value in result.items() if key not in {"per_class", "confusion_matrix", "test_video_ids", "test_labels", "predicted_labels"}},
+            }
         synchronize(device)
         monitor.stop()
         all_parameters = sum(parameter.numel() for parameter in model.parameters())
@@ -319,7 +378,7 @@ def run_experiment(model_name, seed, config, project_root, label_to_index, devic
                 "manifest": str(manifest.relative_to(project_root)),
                 "manifest_sha256": hashlib.sha256(manifest.read_bytes()).hexdigest(),
                 "split_mode": config.get("split_mode", "provided"),
-                "split_counts": {split: int((frame.split == split).sum()) for split in ("train", "val", "test")},
+                "split_counts": {split: int((frame.split == split).sum()) for split in sorted(frame.split.unique())},
                 "test_videos": len(evaluation["test_video_ids"]),
                 "num_classes": len(label_to_index),
                 "class_names": list(label_to_index.keys()),
@@ -329,6 +388,7 @@ def run_experiment(model_name, seed, config, project_root, label_to_index, devic
             "training": {**training_stats, "duration_seconds": round(training_duration, 6),
                          "feature_cache": bool(forward), "feature_extraction_or_load_seconds": None if extraction_seconds is None else round(extraction_seconds, 3)},
             "metrics": {key: value for key, value in evaluation.items() if key not in {"per_class", "confusion_matrix", "test_video_ids", "test_labels", "predicted_labels"}},
+            "extra_tests": extra_tests,
             "per_class": evaluation["per_class"],
             "confusion_matrix": evaluation["confusion_matrix"],
             "class_names": list(label_to_index.keys()),
@@ -361,6 +421,7 @@ def run_experiment(model_name, seed, config, project_root, label_to_index, devic
 
 
 def signer_overlap(frame):
+    """How many signers appear in two splits at once (0 = fully signer-independent)."""
     result = {}
     for left, right in (("train", "val"), ("train", "test"), ("val", "test")):
         left_ids = set(frame.loc[frame.split == left, "signer_id"].astype(str)) - {"", "nan", "None"}

@@ -1,3 +1,9 @@
+"""Loads sign-language video clips for PyTorch.
+
+For each clip listed in the manifest it opens the video with OpenCV, picks evenly spaced frames,
+resizes them to 224x224, converts colours BGR->RGB and normalises them the way ImageNet models expect.
+The result is a tensor shaped [frames, 3, 224, 224] plus the word's class number.
+"""
 from pathlib import Path
 
 import cv2

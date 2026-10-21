@@ -1,3 +1,8 @@
+"""Experiment helper: try several learning rates / dropout / weight-decay values on cached features and
+print the best VALIDATION accuracy for each (the test set is never used here).
+
+    python experiments/sweep_heads.py <features.pt>
+"""
 import sys, os, json, itertools, torch, numpy as np
 sys.path.insert(0, os.getcwd())
 from torch import nn

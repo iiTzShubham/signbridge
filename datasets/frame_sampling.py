@@ -1,3 +1,5 @@
+"""Choose which frames of a clip to use: N frames spread evenly from the first to the last frame.
+"""
 import numpy as np
 
 

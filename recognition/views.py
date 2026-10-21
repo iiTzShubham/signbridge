@@ -1,5 +1,9 @@
+"""The /recognize/ page: shows the camera/upload form and, on POST, sends the clip or camera frames
+to recognition/services.py and returns the predicted word (as HTML, or JSON for the camera script).
+"""
 import json
 
+from django.conf import settings
 from django.contrib import messages
 from django.http import JsonResponse
 from django.shortcuts import render
@@ -7,6 +11,16 @@ from django.views.decorators.http import require_http_methods
 
 from .models import RecognitionPrediction
 from .services import RecognitionUnavailable, predict_upload
+
+
+def _vocabulary():
+    """The words the trained model can recognise (from label_map.json next to the manifest)."""
+    try:
+        config = json.loads((settings.BASE_DIR / "experiment_config.json").read_text(encoding="utf-8"))
+        label_map = (settings.BASE_DIR / config["manifest_file"]).with_name("label_map.json")
+        return sorted(json.loads(label_map.read_text(encoding="utf-8")))
+    except (OSError, KeyError, ValueError):
+        return []
 
 
 @require_http_methods(["GET", "POST"])
@@ -38,4 +52,4 @@ def recognize(request):
     if request.headers.get("Accept") == "application/json":
         return JsonResponse({"result": result, "error": error}, status=200 if result else 400)
     history = RecognitionPrediction.objects.filter(user=request.user)[:5] if request.user.is_authenticated else []
-    return render(request, "recognition/recognize.html", {"selected_model": selected_model, "result": result, "error": error, "history": history})
+    return render(request, "recognition/recognize.html", {"selected_model": selected_model, "result": result, "error": error, "history": history, "vocabulary": _vocabulary()})

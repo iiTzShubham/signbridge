@@ -14,11 +14,13 @@ trained_models/**
 datasets/*/*
 !datasets/WLASL-100/manifest.csv
 !datasets/WLASL-100/label_map.json
-results/checkpoints/
-results/feature_cache/
+!datasets/combined/label_map.json
+results*/checkpoints/
+results*/feature_cache/
 experiments/*.pt
 experiments/ft*/
 notebooks/.ipynb_checkpoints/
 .pytest_cache/
 .coverage
 htmlcov/
+showcase/

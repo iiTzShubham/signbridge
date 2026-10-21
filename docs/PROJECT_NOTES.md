@@ -1,100 +1,142 @@
 # Project Notes — for future reference
 
-A record of how the experiment was set up, what was tried, why decisions were made, and what to do next. Results themselves are in [`../RESULTS.md`](../RESULTS.md).
+A record of how the experiments were set up, what was tried, why each decision was made, and what to do next. The numbers themselves are in [`../RESULTS.md`](../RESULTS.md).
 
-## 1. Reproducing the results (Windows, NVIDIA GPU)
+## 1. How the project fits together
+
+```
+datasets/            clip lists (manifests) + scripts that build them; videos live here but are NOT in git
+  WLASL-100/         manifest.csv, label_map.json (committed); videos/ + WLASL_v0.3.json (downloaded)
+  ASL-Citizen/       videos/ + clips.csv (downloaded, never committed - license)
+  combined/          manifest.csv (built), label_map.json (committed)
+ml_models/           the two models: cnn_lstm.py and vit.py (+ factory.py to build either by name)
+training/            compare_models.py (entry point) -> engine.py (train / test one model + seed)
+results/             Experiment 2 outputs used by the web app (checkpoints/ and feature_cache/ not in git)
+results_wlasl100/    Experiment 1 outputs
+research/            /research/ dashboard + report generator (reporting.py)
+recognition/         /recognize/ page: camera + upload -> services.py -> trained checkpoint
+experiments/         one-off scripts: downloads, feature sweeps, fine-tuning test, web upload test
+learning/, translation/, accounts/   the rest of the SignBridge web app (lessons, word helper, login)
+```
+
+Data flow for training: `manifest.csv` → `datasets/video_dataset.py` (decode 16 frames, resize, normalise) → frozen backbone → cached features → temporal head training → best checkpoint → full-model test on raw video → `results/metrics/*.json` → `research/reporting.py` (tables, report, charts) → `manage.py import_experiment_results` → dashboard.
+
+Data flow for the web app: upload/camera → `recognition/services.py` (same frame choice and resize as training) → checkpoint `results/checkpoints/<model>/seed_<seed>.pth` → top word + top 3.
+
+## 2. Reproducing everything (Windows, NVIDIA GPU)
 
 ```powershell
 py -3.12 -m venv .venv
 .\.venv\Scripts\activate
 python -m pip install -r requirements.txt
-# CUDA build of PyTorch first, then the rest of the ML stack
-python -m pip install torch torchvision --index-url https://download.pytorch.org/whl/cu128
-python -m pip install -r requirements-ml.txt huggingface_hub
+python -m pip install torch torchvision --index-url https://download.pytorch.org/whl/cu128   # CUDA build first
+python -m pip install -r requirements-ml.txt
+copy .env.example .env
+python manage.py migrate
 ```
 
-1. **Annotations** — download `WLASL_v0.3.json` from the official repo (`start_kit/WLASL_v0.3.json` in https://github.com/dxli94/WLASL) into `datasets/WLASL-100/`.
-2. **Videos** — the Kaggle mirror (`risbhawal/wlasl-processed`) is no longer available. The clips were taken from the Hugging Face mirror [Voxel51/WLASL](https://huggingface.co/datasets/Voxel51/WLASL):
-   ```powershell
-   python experiments/download_wlasl_hf.py experiments/hf_wlasl100_files.json datasets/WLASL-100/videos
-   ```
-   `hf_wlasl100_files.json` maps each WLASL-100 `video_id` to its file in the mirror (1,007 files, ~480 MB). Review the WLASL C-UDA terms; do not redistribute the videos.
-3. **Manifest** — `datasets/WLASL-100/manifest.csv` and `label_map.json` are committed, so the exact split can be reused. To rebuild it:
-   ```powershell
-   python datasets/build_manifest.py --annotations datasets/WLASL-100/WLASL_v0.3.json --dataset-root datasets/WLASL-100 --classes 100 --seed 42 --split-mode stratified
-   python datasets/validate_manifest.py --manifest datasets/WLASL-100/manifest.csv --dataset-root datasets/WLASL-100 --classes 100
-   ```
-4. **Train + evaluate both models, 3 seeds** (~20 min on an RTX 3060; most of it is the one-time feature extraction):
-   ```powershell
-   python -m training.compare_models --config experiment_config.json
-   python manage.py migrate
-   python manage.py import_experiment_results
-   python manage.py runserver
-   ```
-   Dashboard: http://127.0.0.1:8000/research/ · live recognition: http://127.0.0.1:8000/recognize/
+**Step 1 — WLASL-100 videos (~480 MB).** Download `WLASL_v0.3.json` from https://github.com/dxli94/WLASL (`start_kit/`) into `datasets/WLASL-100/`, then:
+```powershell
+python experiments/download_wlasl_hf.py experiments/hf_wlasl100_files.json datasets/WLASL-100/videos
+```
+The committed `datasets/WLASL-100/manifest.csv` is the exact split used. To rebuild it: `python datasets/build_manifest.py --annotations datasets/WLASL-100/WLASL_v0.3.json --dataset-root datasets/WLASL-100 --classes 100 --seed 42 --split-mode stratified`.
 
-Checkpoints (`results/checkpoints/`, 101 MB and 382 MB each) and the feature cache are **not** in git because of GitHub's 100 MB file limit; rerun step 4 to regenerate them.
+**Step 2 — ASL Citizen clips for our words (~2.3 GB, ~25 min).** Only the needed clips are read out of Microsoft's 43 GB zip:
+```powershell
+python experiments/download_asl_citizen_subset.py
+python datasets/build_combined_manifest.py
+```
 
-## 2. Decisions and why
+**Step 3 — train + test both models, 3 seeds.**
+```powershell
+python -m training.compare_models --config experiment_config.json            # Experiment 2 (~2 h on RTX 3060)
+python -m training.compare_models --config experiment_config_wlasl100.json   # Experiment 1 (~20 min)
+python manage.py import_experiment_results                                    # load Exp. 2 into the dashboard
+python manage.py runserver
+```
+Most of the time is the one-time feature extraction (ViT: ~45 min for 2,732 clips × 6 views). Later runs reuse `results/feature_cache/`.
+
+**Step 4 — test through the web app (optional).** With the server running:
+```powershell
+python experiments/test_upload_endpoint.py <list.csv with path,label> <out.csv>
+```
+
+Checkpoints are 101 MB (CNN-LSTM) and 382 MB (ViT) each — too big for GitHub — so they are regenerated by Step 3.
+
+## 3. Decisions and why
 
 | Decision | Reason |
 |---|---|
-| Hugging Face mirror for videos | Original YouTube/ASL-site links are mostly dead; the Kaggle copy was removed. |
-| Stratified split instead of official split | With only 1,007 clips, the official split left 28 classes with no test clip and 12 with no validation clip, which the pipeline correctly rejects. |
-| Not signer-independent | A signer-grouped split was attempted (`--split-mode signer-independent`) but left 17 classes missing from validation and 29 from test. Signer overlap is reported in every metrics file. |
-| Frozen ImageNet backbones | Matches the synopsis design (pretrained CNN / ViT feature extractors). Fine-tuning did not help (below). |
-| Cached frame features | With frozen backbones, features are identical every epoch. Computing them once cut an epoch from ~90 s to ~0.3 s, enabling 3 seeds and validation-based tuning. Test evaluation still runs the full model on raw video, so latency/FPS are genuine. |
-| 16 frames (was 8) | Signs last 1–5 s; 8 frames under-sampled motion. Webcam capture was also lengthened to ~2.5 s (16 frames). |
-| lr 3e-4, dropout 0.3, wd 1e-4 | Chosen by a validation-set sweep (`experiments/sweep_heads.py`); same values used for both models so the comparison is fair. |
-| Checkpoint by validation top-1 | Validation loss bottomed out early (epoch ~16–26) while validation accuracy kept improving. Decided on validation evidence; the test set was not used for any choice. |
-| Batch size 8 (was 1) | The original value was set to save memory on a 16 GB Mac; it only affects raw-video evaluation here. |
+| WLASL videos from Hugging Face (Voxel51/WLASL) | Original YouTube links are mostly dead; the Kaggle copy (`risbhawal/wlasl-processed`) was removed. Only 1,007 of 2,038 WLASL-100 clips exist there. |
+| Stratified WLASL split | With half the clips, the official split left 28 words with no test clip; a signer-grouped split left 17 words missing from validation and 29 from test. |
+| Frozen ImageNet backbones | Matches the synopsis (pretrained CNN / ViT feature extractors). Full fine-tuning did not help (Section 4). |
+| Cached frame features | Frozen backbone → identical features each epoch. Computing them once made an epoch ~0.3–1 s instead of ~90 s, enabling 3 seeds and validation-based tuning. Test evaluation still runs the full model on raw video. |
+| 16 frames, ~2.5 s camera capture | Signs last 1–5 s (ASL Citizen median 2.5 s); 8 frames under-sampled the motion. |
+| lr 3e-4, dropout 0.3, wd 1e-4, label smoothing 0.1 | Picked from a validation-only sweep (`experiments/sweep_heads.py`), identical for both models. |
+| Checkpoint by validation top-1 | Validation loss bottomed out early while validation accuracy kept improving. Decided on validation evidence before seeing the corresponding test numbers; never changed after looking at test results. |
+| **Experiment 2: add ASL Citizen** | Testing the Exp. 1 models on ASL Citizen (new signers, home webcams) gave 6 % (ViT) / 2 % (CNN-LSTM) top-1, and live webcam use failed the same way. ASL Citizen adds 34 webcam signers for our words and has an official signer-independent test set, which finally allows objective 7 (unseen signers) to be evaluated. |
+| ASL Citizen test as the main Exp. 2 test | It is the only test set whose signers are guaranteed not to appear in training, and it resembles the app's webcam use. The WLASL test is kept as an extra test for comparison with Exp. 1. |
+| Macro metrics over words present in the test set | ASL Citizen has no "forget"/"short"; counting absent words as 0 would distort the averages. |
+| Web app uses training's exact preprocessing | The app originally resized with OpenCV's default (INTER_LINEAR) and seeked to frames; training used INTER_AREA and sequential reading. Now both share `uniform_frame_indices` and INTER_AREA; web results on WLASL then matched the pipeline exactly. |
+| ViT is the web app's default model | Roughly twice as accurate; still answers in ~0.2 s per upload. |
 
-## 3. What was tried (validation top-1 unless stated)
+## 4. What was tried
 
 | Experiment | CNN-LSTM | ViT | Outcome |
 |---|---:|---:|---|
-| Original config (8 frames, lr 1e-4, batch 1, no augmentation) | ~0.6 % after 2 epochs, 160 s/epoch | – | Too slow, barely learning; stopped |
-| Same with lr 1e-3, 4 data workers | 2.5 % after 3 epochs, 90 s/epoch | – | Still slow; stopped |
-| Cached features + 6 augmented views, sweep of lr / dropout / weight decay (cosine schedule) | 15.8–18.4 % | 23.4–30.4 % | Basis of the final setup |
-| Same, centre-square crop instead of resize | 18.4–19.0 % | 25.3–27.8 % | No meaningful gain; not adopted |
-| End-to-end fine-tuning, backbone lr 3e-5, 20 epochs | 19.6 % | – | Same as frozen, 60 s/epoch; not adopted |
-| End-to-end fine-tuning, backbone lr 1e-4, head lr 1e-3 | 1.3 % | – | Collapsed to chance |
-| Official pipeline, checkpoint by val loss (test) | 14.1 % test | 22.2 % test | Superseded by val-accuracy selection |
-| **Official pipeline, checkpoint by val top-1 (test, final)** | **11.4 % test** | **22.4 % test** | Final results |
+| Original config (8 frames, lr 1e-4, batch 1, no augmentation) | ~0.6 % val after 2 epochs, 160 s/epoch | – | Too slow, barely learning |
+| lr 1e-3, 4 data workers | 2.5 % val after 3 epochs, 90 s/epoch | – | Still slow |
+| Cached features + 6 augmented views, sweep of lr / dropout / wd | 15.8–18.4 % val | 23.4–30.4 % val | Basis of the final recipe |
+| Centre-square crop instead of resize | 18.4–19.0 % val | 25.3–27.8 % val | No meaningful gain |
+| End-to-end fine-tuning, backbone lr 3e-5 | 19.6 % val | – | Same as frozen, 60 s/epoch |
+| End-to-end fine-tuning, backbone lr 1e-4 | 1.3 % val | – | Collapsed to chance |
+| Exp. 1 final (WLASL only), checkpoint by val top-1 | 11.4 % test | 22.4 % test | Kept as Experiment 1 |
+| Exp. 1 models on ASL Citizen via web app | 2.3 % | 6.1 % | Failure on new signers → Exp. 2 |
+| **Exp. 2 final (WLASL + ASL Citizen)** | **16.6 % (new signers)** | **31.4 % (new signers)** | Current models |
 
-Note: one validation clip = 0.63 %, so differences of 1–2 points are within noise.
+One validation clip is worth 0.15 % in Exp. 2 (679 clips) and 0.63 % in Exp. 1 (158 clips).
 
-## 4. Code changes made during the study
+## 5. Data licences — important
 
-- `datasets/build_manifest.py` — new `stratified` split mode.
+- **WLASL** (C-UDA): computational/research use; do not redistribute videos. Videos and the annotation JSON are git-ignored.
+- **ASL Citizen** (Microsoft Research License, `datasets/ASL-Citizen/use.txt`): non-commercial research only; **do not share the videos, put them in git, or include them in publications or presentations**; the people in them must not be identified or contacted. Report numbers only.
+- For demos, record yourself or volunteers who agree, or use a few WLASL test clips in an academic setting (see `showcase/README.md` locally).
+
+## 6. Code changes made during the study
+
+- `datasets/build_manifest.py` — `stratified` split mode.
+- `datasets/build_combined_manifest.py` — merges WLASL-100 and ASL Citizen (new).
 - `datasets/video_dataset.py` — `augmented_views()` for multi-view augmentation.
-- `ml_models/cnn_lstm.py`, `ml_models/vit.py` — `forward()` split into `encode_frames()` + `forward_features()` (same maths, same checkpoints).
-- `training/engine.py` — feature caching (`cache_features`, `feature_views`, `head_batch_size`), label smoothing, `checkpoint_metric`, extraction time recorded separately from head training time.
-- `recognition/services.py` — Windows fix: temp video file is closed before OpenCV opens it.
-- `templates/recognition/recognize.html` — 3-second countdown, ~2.5 s capture (16 frames), top-3 predictions shown; ViT is the default model.
+- `ml_models/*.py` — `forward()` split into `encode_frames()` + `forward_features()` (same maths, same checkpoints); plain-language comments.
+- `training/engine.py` — feature caching, label smoothing, `checkpoint_metric`, `extra_test_splits`, `require_all_classes_in_eval`, macro metrics over present classes, extraction time recorded separately.
+- `research/reporting.py` — tables and CSVs for extra test sets.
+- `recognition/services.py` — Windows temp-file fix; preprocessing identical to training.
+- `recognition/views.py`, `templates/recognition/recognize.html` — countdown, ~2.5 s capture, top-3 results, ViT default, word list and signing tips.
 
-## 5. Future work
+## 7. Future work
 
-1. **Signer-independent evaluation** — obtain more WLASL videos (or the full WLASL-300/2000 for more signers per class) so a signer-grouped split is feasible.
-2. **Pose / hand-landmark input** — MediaPipe hand and body keypoints with an LSTM or Transformer are far more data-efficient and robust to background and lighting (e.g. SPOTER, Pose-TGCN ≈ 55 % on WLASL-100).
-3. **Video-pretrained backbones** — I3D, VideoMAE or TimeSformer pretrained on Kinetics capture motion directly (I3D ≈ 65.9 % on WLASL-100).
-4. **Hand-focused cropping** — detect the signer/hands and crop before feature extraction; hands occupy a small part of a 224×224 frame.
-5. **Indian Sign Language** — collect a small ISL dataset with consent (e.g. via a recording page in the app) and retrain, so recognition matches the app's ISL lessons.
-6. **Continuous recognition and sentences** — sliding-window recognition plus the "add word to sentence" loop from the system flowchart.
-7. **End-to-end latency** — measure decode + preprocessing + model time in the web app, and CPU-only performance, for deployment claims.
+1. **Pose / hand-landmark input** (MediaPipe) with an LSTM or Transformer — far more robust to background and lighting (e.g. SPOTER, Pose-TGCN ≈ 55 % on WLASL-100).
+2. **Video-pretrained backbones** (I3D, VideoMAE, TimeSformer on Kinetics) — capture motion directly (I3D ≈ 65.9 % on WLASL-100).
+3. **Fine-tune with more data** — with 2,700+ training clips, partial fine-tuning (last backbone blocks) may now help, unlike in Exp. 1.
+4. **Hand / signer cropping** before feature extraction.
+5. **Fingerspelling mode** — static letters (A–Z) from hand landmarks, a common user expectation ("C" is not a word in this vocabulary).
+6. **Indian Sign Language** — collect consented ISL recordings so recognition matches the app's ISL lessons.
+7. **Continuous recognition and sentences** — sliding window + the "add word to sentence" loop from the system flowchart.
+8. **End-to-end and CPU latency** — report decode + preprocessing + model time on CPU-only machines.
 
-## 6. References
+## 8. References
 
-1. Li, D., Rodriguez Opazo, C., Yu, X., & Li, H. (2020). Word-level deep sign language recognition from video: A new large-scale dataset and methods comparison. *WACV 2020*, 1459–1469. https://doi.org/10.1109/WACV45572.2020.9093512
-2. Dosovitskiy, A., et al. (2021). An image is worth 16×16 words: Transformers for image recognition at scale. *ICLR 2021*. https://arxiv.org/abs/2010.11929
-3. He, K., Zhang, X., Ren, S., & Sun, J. (2016). Deep residual learning for image recognition. *CVPR 2016*. https://arxiv.org/abs/1512.03385
-4. Hochreiter, S., & Schmidhuber, J. (1997). Long short-term memory. *Neural Computation*, 9(8), 1735–1780.
-5. Vaswani, A., et al. (2017). Attention is all you need. *NeurIPS 2017*. https://arxiv.org/abs/1706.03762
-6. Carreira, J., & Zisserman, A. (2017). Quo vadis, action recognition? A new model and the Kinetics dataset. *CVPR 2017* (I3D). https://arxiv.org/abs/1705.07750
-7. Boháček, M., & Hrúz, M. (2022). Sign pose-based transformer for word-level sign language recognition (SPOTER). *WACV Workshops 2022*.
-8. Szegedy, C., et al. (2016). Rethinking the inception architecture for computer vision. *CVPR 2016* (label smoothing). https://arxiv.org/abs/1512.00567
-9. WLASL dataset and C-UDA terms: https://dxli94.github.io/WLASL/ · https://github.com/dxli94/WLASL
-10. Voxel51 WLASL mirror (video source used): https://huggingface.co/datasets/Voxel51/WLASL
-11. PyTorch: https://pytorch.org/docs/ · torchvision models: https://pytorch.org/vision/stable/models.html · OpenCV: https://docs.opencv.org/
+1. Li, D., Rodriguez Opazo, C., Yu, X., & Li, H. (2020). Word-level deep sign language recognition from video: A new large-scale dataset and methods comparison. *WACV 2020*. https://doi.org/10.1109/WACV45572.2020.9093512
+2. Desai, A., Berger, L., Minakov, F. O., Milan, V., Singh, C., Pumphrey, K., Ladner, R. E., Daumé III, H., Lu, A. X., Caselli, N., & Bragg, D. (2023). ASL Citizen: A community-sourced dataset for advancing isolated sign language recognition. *NeurIPS 2023 Datasets and Benchmarks*. https://arxiv.org/abs/2304.05934
+3. Dosovitskiy, A., et al. (2021). An image is worth 16×16 words: Transformers for image recognition at scale. *ICLR 2021*. https://arxiv.org/abs/2010.11929
+4. He, K., Zhang, X., Ren, S., & Sun, J. (2016). Deep residual learning for image recognition. *CVPR 2016*. https://arxiv.org/abs/1512.03385
+5. Hochreiter, S., & Schmidhuber, J. (1997). Long short-term memory. *Neural Computation*, 9(8), 1735–1780.
+6. Vaswani, A., et al. (2017). Attention is all you need. *NeurIPS 2017*. https://arxiv.org/abs/1706.03762
+7. Carreira, J., & Zisserman, A. (2017). Quo vadis, action recognition? A new model and the Kinetics dataset (I3D). *CVPR 2017*. https://arxiv.org/abs/1705.07750
+8. Boháček, M., & Hrúz, M. (2022). Sign pose-based transformer for word-level sign language recognition (SPOTER). *WACV Workshops 2022*.
+9. Szegedy, C., et al. (2016). Rethinking the inception architecture for computer vision (label smoothing). *CVPR 2016*. https://arxiv.org/abs/1512.00567
+10. WLASL dataset: https://dxli94.github.io/WLASL/ · Voxel51 mirror: https://huggingface.co/datasets/Voxel51/WLASL
+11. ASL Citizen dataset: https://www.microsoft.com/en-us/research/project/asl-citizen/
+12. PyTorch https://pytorch.org/docs/ · torchvision models https://pytorch.org/vision/stable/models.html · OpenCV https://docs.opencv.org/
 
-Verify page numbers and DOIs against your library before citing in the final paper.
+Verify author lists, page numbers and DOIs against your library before citing in the final paper.

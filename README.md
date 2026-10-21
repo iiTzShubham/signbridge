@@ -1,21 +1,36 @@
 # SignBridge — Sign Language Learning and Recognition
 
-SignBridge is a Django foundation for a sign language learning, recognition, and translation platform. It provides the project setup, SQLite development database, account registration and login, password reset flow, responsive pages, and a beginner Indian Sign Language (ISL) lesson library. The research module includes paired CNN-LSTM and temporal Vision Transformer training/evaluation, result reporting, and a Django comparison dashboard. It reports no model performance until actual completed runs are recorded.
+SignBridge is a Django web app for learning sign language and recognising signs from video, built for the research project **"A Comparative Study of CNN-LSTM and Vision Transformer Models for Real-Time Sign Language Recognition"** (MCA Sem III, IIMS Chinchwad / SPPU).
+
+It has four parts:
+
+| Page | What it does |
+|---|---|
+| `/learn/` | Beginner Indian Sign Language (ISL) lessons with ISLRTC videos, search, practice counts and progress |
+| `/recognize/` | Recognise one **American Sign Language (ASL) word** from your webcam or an uploaded video, with either model |
+| `/translate/` | Small offline English / Hindi / Marathi word helper linking words to ISL lesson videos |
+| `/research/` | Dashboard comparing the two models (accuracy, F1, latency, FPS, size, training curves) |
 
 ## Results at a glance
 
-Measured on the WLASL-100 test split (mean ± std over 3 seeds, RTX 3060 Laptop GPU):
+Both models were trained on WLASL-100 + ASL Citizen and tested on **11 signers they had never seen** (1,705 clips). Numbers are mean ± std over 3 seeds, measured on an RTX 3060 Laptop GPU.
 
 | | CNN-LSTM | Vision Transformer |
 |---|---:|---:|
-| Top-1 accuracy | 11.4 ± 1.3 % | **22.4 ± 2.4 %** |
-| Top-5 accuracy | 27.4 ± 2.2 % | **49.4 ± 2.3 %** |
-| Latency (model only) | **31.7 ms/clip** | 128.3 ms/clip |
+| Top-1 accuracy | 16.6 ± 1.2 % | **31.4 ± 1.3 %** |
+| Top-5 accuracy | 41.9 ± 1.6 % | **60.5 ± 2.0 %** |
+| Macro F1-score | 12.9 ± 1.8 % | **28.8 ± 1.7 %** |
+| Latency (model only, 16-frame clip) | **31.8 ms** | 143.2 ms |
 | Checkpoint size | **101 MB** | 382 MB |
 
-Full results, protocol and limitations: [RESULTS.md](RESULTS.md). Decisions, experiments tried, reproduction steps, future work and references: [docs/PROJECT_NOTES.md](docs/PROJECT_NOTES.md).
+The ViT is about twice as accurate; the CNN-LSTM is about 4.5× faster and 3.8× smaller. Training on WLASL-100 alone (Experiment 1) gave only 6 % / 2 % top-1 on new signers; adding ASL Citizen's webcam signers fixed most of that.
+
+- Full results, both experiments, protocol and limitations: **[RESULTS.md](RESULTS.md)**
+- How everything works, decisions, what was tried, reproduction, future work, references: **[docs/PROJECT_NOTES.md](docs/PROJECT_NOTES.md)**
 
 ## Quick start (Windows)
+
+Run the web app (lessons, translator, dashboard) — no GPU needed:
 
 ```powershell
 py -3.12 -m venv .venv
@@ -23,115 +38,80 @@ py -3.12 -m venv .venv
 python -m pip install -r requirements.txt
 copy .env.example .env
 python manage.py migrate
+python manage.py import_experiment_results
 python manage.py runserver
 ```
 
-For training and live recognition, also install the ML stack (see [docs/PROJECT_NOTES.md](docs/PROJECT_NOTES.md#1-reproducing-the-results-windows-nvidia-gpu)). Trained checkpoints are not stored in git; regenerate them with `python -m training.compare_models --config experiment_config.json`.
+Open <http://127.0.0.1:8000/>. Create an account at **Get started**, or an admin with `python manage.py createsuperuser` (admin at `/admin/`).
 
-## Requirements
+### Sign recognition
 
-- Python 3.10 or later (Python 3.12 recommended)
-- Git (optional for local development)
-- No Node.js build step
+Recognition also needs the ML packages and the trained checkpoints:
 
-## Setup
-
-```bash
-git clone <repository-url>
-cd signbridge
-# On macOS, use the versioned executable so the system Python isn't selected.
-python3.12 -m venv .venv
-source .venv/bin/activate
-python -m pip install --upgrade pip
-python -m pip install -r requirements.txt
-cp .env.example .env
-python manage.py migrate
-python manage.py runserver
-```
-
-If `python3.12` is not installed, install Python 3.12 from [python.org](https://www.python.org/downloads/) first. Django 5.2 does not support Python 3.9. After creating the environment, select the workspace's `.venv` interpreter in your IDE. If an older `.venv` already exists, remove it before recreating it with Python 3.12.
-
-Open <http://127.0.0.1:8000/>. Create an account at **Get started** or create an admin with `python manage.py createsuperuser` and open <http://127.0.0.1:8000/admin/>.
-
-On Windows, activate the virtual environment with `.venv\Scripts\activate`.
-
-## Configuration
-
-Copy `.env.example` to `.env` before deployment and set a unique, private `SECRET_KEY`, `DEBUG=False`, and the appropriate `ALLOWED_HOSTS`. The settings loader reads simple `KEY=value` lines and does not require an extra package. SQLite is used by default at `db.sqlite3`. `TRANSLATION_API_KEY` and `MODEL_PATH` are reserved for later modules. Never commit `.env`, real API keys, model weights, or personal datasets.
-
-## Phase 1 features
-
-- Django project with SQLite and Django's secure built-in authentication
-- Registration with username, name, unique email, password validation, and hashed passwords
-- Login, logout (CSRF-protected POST), password change/reset foundation
-- Public landing page and a login-protected dashboard
-- Public beginner lesson library at `/learn/`, with search and category filters
-- Starter ISL lessons for the alphabet, greetings, self-introduction, and common words, using ISLRTC instructional videos
-- Signed-in lesson views, practice counts, and completion progress
-- Lesson content managed in the database and editable in Django Admin
-- Responsive templates and custom CSS; no frontend build tool required
-- Django admin enabled
-
-Password reset uses Django's console email backend in development. Reset messages are printed in the server terminal. Configure a real email backend before production use.
-
-## Planned modules
-
-The project is intended to grow into independent Django apps for translation, recognition, history, and API access. PyTorch architectures, data loaders, training/evaluation scripts, and actual experiment records are kept separate from web views. Recognition results and performance metrics must come from a loaded model and recorded evaluation; the interface must never invent them.
-
-## Research experiments
-
-Research scripts use an optional dependency file so the Django learning site does not require PyTorch. Activate `.venv` and install the ML stack when ready:
-
-```bash
+```powershell
+python -m pip install torch torchvision --index-url https://download.pytorch.org/whl/cu128   # NVIDIA GPU; drop the URL for CPU-only
 python -m pip install -r requirements-ml.txt
 ```
 
-The default protocol expects WLASL-100 metadata at `datasets/WLASL-100/WLASL_v0.3.json` and authorized clips at `datasets/WLASL-100/videos/<video_id>.mp4`. WLASL access and use are governed by the official [WLASL repository and C-UDA terms](https://github.com/dxli94/WLASL); request/access the videos from the maintainers and do not redistribute them. The repository does not include WLASL videos or annotations.
+Checkpoints (`results/checkpoints/`, 101–382 MB each) are too large for GitHub, so they are not in this repository. Re-create them by downloading the data and training (≈2 hours on an RTX 3060) — see [docs/PROJECT_NOTES.md § 2](docs/PROJECT_NOTES.md#2-reproducing-everything-windows-nvidia-gpu). Without them, `/recognize/` explains what is missing instead of guessing.
 
-Build and validate the local manifest:
+### Trying `/recognize/`
 
-```bash
-python datasets/build_manifest.py --annotations datasets/WLASL-100/WLASL_v0.3.json --dataset-root datasets/WLASL-100 --classes 100 --seed 42 --split-mode provided
-python datasets/validate_manifest.py --manifest datasets/WLASL-100/manifest.csv --dataset-root datasets/WLASL-100 --classes 100
+1. Pick **Vision Transformer** (default, more accurate) or **CNN-LSTM** (faster).
+2. **Camera:** click **Start camera**, then **Capture sign**. After the 3-2-1 countdown, sign **one** word for about 2.5 seconds.
+   **Upload:** choose a short video of one sign (MP4/WebM, under 50 MB) and click **Recognize this clip**.
+3. Read the top answer *and* the top-3 list.
+
+Tips: keep head, hands and upper body in view, use good light and a plain background. The models only know the 100 ASL words listed on the page — not fingerspelled letters (e.g. "C"), sentences, or ISL. Words recognised most reliably for new signers include *dark, son, table, jacket, color, meet, kiss, africa, eat, but, shirt, decide, bed, hat, city*.
+
+## Research pipeline
+
+```powershell
+python datasets/build_combined_manifest.py                                     # merge WLASL-100 + ASL Citizen clip lists
+python -m training.compare_models --config experiment_config.json             # Experiment 2: train + test both models, 3 seeds
+python -m training.compare_models --config experiment_config_wlasl100.json    # Experiment 1: WLASL-100 only
+python manage.py import_experiment_results                                     # show Experiment 2 on /research/
 ```
 
-If you create a signer-independent split, use `--split-mode signer-independent`; it requires signer IDs and every class in all three partitions. Record the split protocol and do not compare results from different manifests as paired experiments. Review and update `experiment_config.json` before running. The machine checked during development is an Apple Silicon M4 with 16 GiB RAM; `device: auto` prefers CUDA/MPS when available and otherwise CPU. The configured batch size is 1 to bound memory. Pretrained torchvision weights may need to download on the first run.
+Each run writes per-seed JSON metrics, `model_comparison*.csv`, an auto-generated report (`experimental_results.md` / `.docx`), charts and training curves to its results folder, and appends to `run_log.txt`. Missing data or packages are reported as "Not measured" — the pipeline never invents numbers. Latency is model-only (decoding excluded); the multi-seed results are mean ± standard deviation without significance claims. Metric definitions: [research/methodology.md](research/methodology.md).
 
-Run both models on the same manifest, split, and configured seeds:
+Useful options: `--seeds 42 123 2026`, `--models cnn_lstm`, `--device cpu`, `--epochs 50`.
 
-```bash
-python -m training.compare_models --config experiment_config.json
-```
+## Project layout
 
-Adjust resources or seeds without editing the file:
+| Folder | Contents |
+|---|---|
+| `ml_models/` | The two models (`cnn_lstm.py`, `vit.py`), with plain-language comments |
+| `training/` | `compare_models.py` (entry point) and `engine.py` (train/test one model + seed) |
+| `datasets/` | Manifest builders and the video loader; videos are downloaded here and git-ignored |
+| `results/`, `results_wlasl100/` | Experiment 2 and Experiment 1 outputs |
+| `research/` | Dashboard, report generator, results import command |
+| `recognition/` | `/recognize/` page and the inference service |
+| `experiments/` | Download scripts, tuning sweeps, fine-tuning test, web upload test |
+| `learning/`, `translation/`, `accounts/` | Lessons, word helper, sign-up/login |
+| `docs/` | Project notes |
 
-```bash
-python -m training.compare_models --config experiment_config.json --seeds 42 123 2026 --batch-size 1 --num-frames 8 --device auto
-```
+## Data and licences
 
-The runner records complete metrics only after the validation-selected checkpoint is evaluated on the held-out test split. It creates `results/model_comparison.csv`, `experimental_results.md`, editable `experimental_results.docx` (when `python-docx` is installed), per-seed JSON metrics, configuration, status, and an append-only run log. Figures are emitted only from successful measured runs. Missing dependencies or data are recorded in the report and log as “Not measured”. The comparison dashboard is at `/research/`; import run records after training with:
+- **WLASL** — C-UDA licence, research use; videos and annotations are not redistributed here. Source: <https://github.com/dxli94/WLASL>; videos used were from the Hugging Face mirror [Voxel51/WLASL](https://huggingface.co/datasets/Voxel51/WLASL).
+- **ASL Citizen** — Microsoft Research licence, non-commercial research only; the videos must not be shared or shown in presentations. Source: <https://www.microsoft.com/en-us/research/project/asl-citizen/>.
+- **ISL lesson videos** — linked from ISLRTC.
 
-```bash
-python manage.py migrate
-python manage.py import_experiment_results
-```
+## Configuration
 
-For methodology and metric definitions see [`research/methodology.md`](research/methodology.md). Inference latency is model-only and excludes decoding and preprocessing, so it is not end-to-end web application latency. Multiple seeds produce mean and standard deviation; the pipeline does not make significance claims.
+Copy `.env.example` to `.env` and, before any deployment, set a private `SECRET_KEY`, `DEBUG=False` and the correct `ALLOWED_HOSTS`. SQLite (`db.sqlite3`) is used by default. Password-reset emails are printed in the server terminal in development. Never commit `.env`, model weights or datasets.
 
-## Recognition and text-to-sign tools
+## App features
 
-- `/recognize/` supports browser camera capture and video upload. It makes predictions only when a trained checkpoint exists at `results/checkpoints/<model>/seed_<seed>.pth`; otherwise it explains what is missing. The current research config uses WLASL, an American Sign Language dataset, so those weights are not suitable for ISL recognition. ISL prediction requires an ISL-trained checkpoint and label map.
-- `/translate/` provides a small offline English/Hindi/Marathi word helper and links words to related ISLRTC lesson videos or the ISL alphabet visual guide. It is a vocabulary learning aid, not a fluent translator; ISL has its own grammar and meanings depend on context.
-- Beginner lessons at `/learn/` include ISLRTC videos and visual references. Signed-in recognition predictions and translator inputs are saved to the account history tables; uploaded clips are processed in memory and are not saved as files.
+- Registration with unique email and password validation; login, logout, password change/reset
+- Login-protected dashboard; lessons, practice counts and completion progress
+- Lesson content editable in Django Admin
+- Signed-in recognition predictions and translator inputs are saved to the user's history; uploaded clips are processed in memory and never saved
+- Responsive templates and custom CSS, no frontend build step
 
 ## Development checks
 
-Once Python and dependencies are available, run:
-
-```bash
+```powershell
 python manage.py check
-python manage.py migrate
-python manage.py runserver
+python manage.py test
 ```
-
-Authentication, app, and API tests will be added with their corresponding modules. They have not been run in this environment because the current system Python cannot start until Command Line Tools are installed.

@@ -1,4 +1,7 @@
 #!/usr/bin/env python3
+"""Check a manifest before training: required columns, video files exist, every split has every word,
+and how many signers appear in more than one split (signer overlap).
+"""
 import argparse
 from pathlib import Path
 

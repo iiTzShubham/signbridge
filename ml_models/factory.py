@@ -1,3 +1,9 @@
+"""One place to create either model by name, using the settings in experiment_config.json.
+
+    build_model("cnn_lstm", 100, config)      -> CNN-LSTM
+    build_model("vit_temporal", 100, config)  -> Vision Transformer + temporal Transformer
+Both models receive the same dropout / pretrained / frozen settings so the comparison is fair.
+"""
 from .cnn_lstm import build_model as build_cnn_lstm
 from .vit import build_model as build_vit
 

@@ -1,3 +1,5 @@
+"""Database table that stores each signed-in user's recognition history (word, confidence, model, time).
+"""
 from django.conf import settings
 from django.db import models
 

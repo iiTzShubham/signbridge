@@ -1,3 +1,5 @@
+"""Lesson pages: list/search lessons, show one lesson, and record practice and completion progress.
+"""
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.db.models import Q

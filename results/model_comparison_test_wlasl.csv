@@ -1,0 +1,6 @@
+Evaluation metric,CNN-LSTM,Vision Transformer,Better result
+Top-1 accuracy (%),21.097 ± 2.923 (n=3),34.388 ± 1.462 (n=3),Vision Transformer
+Top-5 accuracy (%),47.046 ± 2.991 (n=3),61.814 ± 2.558 (n=3),Vision Transformer
+Macro precision (%),19.117 ± 1.592 (n=3),31.417 ± 1.956 (n=3),Vision Transformer
+Macro recall (%),20.667 ± 3.686 (n=3),36.000 ± 1.803 (n=3),Vision Transformer
+Macro F1-score (%),18.010 ± 2.474 (n=3),31.139 ± 1.614 (n=3),Vision Transformer

@@ -1,36 +1,13 @@
 
-[2026-10-20T22:32:01.031632+00:00] Experiment invocation
-Python: 3.12.15
-Hardware: {"accelerator": "cpu", "cpu_count": 10, "gpu": [{"cores": "8", "name": "Apple M4"}], "hardware_model": "Mac16,12", "machine": "arm64", "memory_bytes": 17179869184, "platform": "macOS-26.6.2-arm64-arm-64bit", "processor": "arm"}
-Software: {"Django": "5.2.18", "matplotlib": "not installed", "numpy": "not installed", "opencv-python-headless": "not installed", "pandas": "not installed", "python": "3.12.15", "python-docx": "not installed", "scikit-learn": "not installed", "scipy": "not installed", "torch": "not installed", "torchvision": "not installed"}
-Models: cnn_lstm, vit_temporal; seeds: [42]
-Training not started; preflight requirements are incomplete:
-- Missing ML dependencies: torch (Python module torch), torchvision (Python module torchvision), opencv-python-headless (Python module cv2), numpy (Python module numpy), pandas (Python module pandas), scikit-learn (Python module sklearn), psutil (Python module psutil). Install with: python -m pip install -r requirements-ml.txt
-- WLASL annotations and manifest are missing. Place WLASL_v0.3.json at /Users/samruddhi/Documents/signbridge/datasets/WLASL-100/WLASL_v0.3.json and authorized WLASL video clips under /Users/samruddhi/Documents/signbridge/datasets/WLASL-100/videos/<video_id>.mp4; review the official WLASL C-UDA terms and request video access from the maintainers first.
-Editable DOCX report skipped: python-docx is not installed. Install with: python -m pip install -r requirements-ml.txt
-
-[2026-10-21T06:30:02.487928+00:00] Experiment invocation
+[2026-10-21T07:50:34.079076+00:00] Experiment invocation
 Python: 3.12.3
 Hardware: {"accelerator": "cuda", "cpu_count": 16, "gpu": "NVIDIA GeForce RTX 3060 Laptop GPU", "hardware_model": null, "machine": "AMD64", "memory_bytes": null, "platform": "Windows-11-10.0.26220-SP0", "processor": "AMD64 Family 25 Model 80 Stepping 0, AuthenticAMD"}
 Software: {"Django": "5.2.18", "matplotlib": "3.11.2", "numpy": "2.5.2", "opencv-python-headless": "4.14.0", "pandas": "3.0.6", "python": "3.12.3", "python-docx": "1.2.0", "scikit-learn": "1.9.1", "scipy": "1.18.1", "torch": "2.11.0+cu128", "torchvision": "0.26.0+cu128"}
 Models: cnn_lstm, vit_temporal; seeds: [42, 123, 2026]
-COMPLETE cnn_lstm_seed_42: test videos=158 classes=100 device=cuda
-COMPLETE cnn_lstm_seed_123: test videos=158 classes=100 device=cuda
-COMPLETE cnn_lstm_seed_2026: test videos=158 classes=100 device=cuda
-COMPLETE vit_temporal_seed_42: test videos=158 classes=100 device=cuda
-COMPLETE vit_temporal_seed_123: test videos=158 classes=100 device=cuda
-COMPLETE vit_temporal_seed_2026: test videos=158 classes=100 device=cuda
-Editable DOCX report generated: results\experimental_results.docx
-
-[2026-10-21T06:54:59.050597+00:00] Experiment invocation
-Python: 3.12.3
-Hardware: {"accelerator": "cuda", "cpu_count": 16, "gpu": "NVIDIA GeForce RTX 3060 Laptop GPU", "hardware_model": null, "machine": "AMD64", "memory_bytes": null, "platform": "Windows-11-10.0.26220-SP0", "processor": "AMD64 Family 25 Model 80 Stepping 0, AuthenticAMD"}
-Software: {"Django": "5.2.18", "matplotlib": "3.11.2", "numpy": "2.5.2", "opencv-python-headless": "4.14.0", "pandas": "3.0.6", "python": "3.12.3", "python-docx": "1.2.0", "scikit-learn": "1.9.1", "scipy": "1.18.1", "torch": "2.11.0+cu128", "torchvision": "0.26.0+cu128"}
-Models: cnn_lstm, vit_temporal; seeds: [42, 123, 2026]
-COMPLETE cnn_lstm_seed_42: test videos=158 classes=100 device=cuda
-COMPLETE cnn_lstm_seed_123: test videos=158 classes=100 device=cuda
-COMPLETE cnn_lstm_seed_2026: test videos=158 classes=100 device=cuda
-COMPLETE vit_temporal_seed_42: test videos=158 classes=100 device=cuda
-COMPLETE vit_temporal_seed_123: test videos=158 classes=100 device=cuda
-COMPLETE vit_temporal_seed_2026: test videos=158 classes=100 device=cuda
+COMPLETE cnn_lstm_seed_42: test videos=1705 classes=100 device=cuda
+COMPLETE cnn_lstm_seed_123: test videos=1705 classes=100 device=cuda
+COMPLETE cnn_lstm_seed_2026: test videos=1705 classes=100 device=cuda
+COMPLETE vit_temporal_seed_42: test videos=1705 classes=100 device=cuda
+COMPLETE vit_temporal_seed_123: test videos=1705 classes=100 device=cuda
+COMPLETE vit_temporal_seed_2026: test videos=1705 classes=100 device=cuda
 Editable DOCX report generated: results\experimental_results.docx

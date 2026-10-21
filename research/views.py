@@ -1,3 +1,5 @@
+"""The /research/ dashboard: reads imported experiment runs from the database and shows the comparison.
+"""
 import json
 
 from django.conf import settings

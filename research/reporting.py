@@ -94,6 +94,44 @@ def _format_value(item):
     return f"{item['mean']:.3f}{suffix} (n={item['n']})"
 
 
+def extra_test_tables(results_dir: Path, records):
+    """Markdown tables (and a CSV each) for extra test sets such as "test_wlasl".
+
+    Each run stores these under record["extra_tests"][split]["metrics"]; we average them per model
+    the same way as the main table. Only accuracy-type metrics are shown (speed is the same model).
+    """
+    splits = sorted({split for r in records for split in r.get("extra_tests", {})})
+    lines = []
+    for split in splits:
+        per_model = {}
+        for model in MODELS:
+            rows = [r["extra_tests"][split] for r in records if r["model"] == model and split in r.get("extra_tests", {})]
+            per_model[model] = {"runs": len(rows), "values": {}}
+            for _label, key, _higher, _section in METRICS[:5]:
+                vals = [float(v) for row in rows if (v := row["metrics"].get(key)) is not None]
+                per_model[model]["values"][key] = {"mean": statistics.mean(vals) if vals else None,
+                                                   "std": statistics.stdev(vals) if len(vals) > 1 else None, "n": len(vals)}
+        clips = next((r["extra_tests"][split]["test_videos"] for r in records if split in r.get("extra_tests", {})), "?")
+        lines += [f"### Additional test set: `{split}` ({clips} clips)", "",
+                  "| Evaluation metric | CNN-LSTM | Vision Transformer | Better result |", "|---|---:|---:|---|"]
+        csv_rows = []
+        for label, key, higher, _section in METRICS[:5]:
+            left, right = per_model["cnn_lstm"]["values"][key], per_model["vit_temporal"]["values"][key]
+            if left["mean"] is None or right["mean"] is None:
+                better = "Not measured"
+            else:
+                better = "Tie" if math.isclose(left["mean"], right["mean"]) else MODEL_LABELS["cnn_lstm" if left["mean"] > right["mean"] else "vit_temporal"]
+            row = [label, _format_value(left), _format_value(right), better]
+            csv_rows.append(row)
+            lines.append(f"| {' | '.join(row)} |")
+        with (results_dir / f"model_comparison_{split}.csv").open("w", newline="", encoding="utf-8") as f:
+            writer = csv.writer(f)
+            writer.writerow(["Evaluation metric", "CNN-LSTM", "Vision Transformer", "Better result"])
+            writer.writerows(csv_rows)
+        lines.append("")
+    return lines
+
+
 def generate_markdown(results_dir: Path, config, records, summary):
     output = results_dir / "experimental_results.md"
     lines = [f"# {config.get('experiment_title', 'Experimental Results')}", "", "## 1. Experimental Setup", "",
@@ -112,8 +150,9 @@ def generate_markdown(results_dir: Path, config, records, summary):
             if len(row) == 4:
                 lines.append(f"| {row[0]} | {row[1]} | {row[2]} | {row[3]} |")
     lines += ["", f"Completed runs: CNN-LSTM {summary['cnn_lstm']['runs']}; Vision Transformer {summary['vit_temporal']['runs']}.", "",
-              "Metrics are means across successful seeds when there is more than one run; the accompanying `±` is sample standard deviation. A single run is preliminary and does not estimate run-to-run variability.", "",
-              "## 3. Comparative Analysis", ""]
+              "Metrics are means across successful seeds when there is more than one run; the accompanying `±` is sample standard deviation. A single run is preliminary and does not estimate run-to-run variability.", ""]
+    lines += extra_test_tables(results_dir, records)
+    lines += ["## 3. Comparative Analysis", ""]
     if summary["cnn_lstm"]["runs"] and summary["vit_temporal"]["runs"]:
         lines.append("The table reports measured values for both architectures. Per-metric direction is used for the ‘Better result’ column; these measurements do not establish a universal deployment winner. Latency and FPS here time the model forward pass on the recorded device and exclude video decoding and preprocessing.")
     else:
@@ -126,7 +165,7 @@ def generate_markdown(results_dir: Path, config, records, summary):
         lines.append("Both models have measured runs, but only one or too few runs are available for variability analysis. Any observed difference is preliminary; statistical significance is not claimed.")
     else:
         lines.append("Inconclusive: one or both experiments have not produced a completed test evaluation. There is no evidence yet to accept or reject a performance-difference hypothesis.")
-    lines += ["", "## 6. Limitations", "", "- Dataset availability, split integrity, class balance, and signer overlap must be verified from the recorded manifest and run metadata.", "- Results are limited to the configured WLASL-100 data, preprocessing, architecture settings, seeds, and available hardware.", "- The latency measure excludes decoding and preprocessing and should not be interpreted as end-to-end real-time performance.", "- Statistical significance is not reported unless an appropriate analysis is separately implemented and justified.", ""]
+    lines += ["", "## 6. Limitations", "", "- Dataset availability, split integrity, class balance, and signer overlap must be verified from the recorded manifest and run metadata.", f"- Results are limited to the configured {config.get('dataset_name', 'dataset')} data, preprocessing, architecture settings, seeds, and available hardware.", "- The latency measure excludes decoding and preprocessing and should not be interpreted as end-to-end real-time performance.", "- Statistical significance is not reported unless an appropriate analysis is separately implemented and justified.", ""]
     status_path = results_dir / "experiment_status.json"
     status = json.loads(status_path.read_text(encoding="utf-8")) if status_path.is_file() else {}
     if status.get("blockers") or any(run.get("status") != "complete" for run in status.get("runs", [])):

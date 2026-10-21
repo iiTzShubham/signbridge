@@ -1,3 +1,5 @@
+"""Record the computer's hardware and software versions so every result file says where it was measured.
+"""
 import json
 import os
 import platform
