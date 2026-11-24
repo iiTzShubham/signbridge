@@ -1,0 +1,95 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}Record letters · SignBridge{% endblock %}
+{% block extra_head %}<link rel="stylesheet" href="{% static 'css/tools.css' %}"><style>.camera-stage video:not([hidden]){display:block}</style>{% endblock %}
+{% block content %}
+<section class="tool-page">
+  <header class="tool-hero recognize-hero"><div><p class="tool-kicker">SIGNBRIDGE · LETTER LAB</p><h1>Teach it your<br><em>alphabet.</em></h1><p>Pick a letter, hold the handshape in front of your camera and record. About 40 samples per still letter and 20 recordings each of J and Z is plenty. Then press Train.</p></div><div class="tool-hero-illustration" aria-hidden="true"><span>🤟</span><i>A &nbsp; B &nbsp; C</i></div></header>
+  <div class="tool-note tool-note-warm"><span>ⓘ</span><p><strong>Tips for good samples</strong><br>Use the <b>ASL</b> alphabet handshapes. For still letters, keep the letter shape while a recording runs but move your hand a little — closer, further, slightly tilted — so the model learns the shape and not one exact position. For <b>J</b> (little finger) and <b>Z</b> (index finger), each recording is one 2-second capture: start drawing the letter right after the countdown, at a normal, steady speed, and keep your hand in view. Samples from more than one person make it work for more people. Only the 21 hand-point numbers are saved (in <code>trained_models/letters/samples.csv</code>), never the camera images. <a href="{% url 'recognition:recognize' %}?mode=letters">← Back to letter recognition</a></p></div>
+
+  <div class="letter-record">
+    <section class="camera-card"><div class="tool-card-heading"><div><span class="tool-overline">RECORDING</span><h2>Your camera</h2></div><span class="live-badge"><i></i> PRIVATE PREVIEW</span></div>
+      <div class="camera-stage"><video id="camera-preview" autoplay muted playsinline hidden></video><div class="camera-placeholder" id="camera-placeholder"><span>✋</span><b>Your hand will appear here</b><small>One hand, palm towards the camera, good light.</small></div><span class="camera-frame-label">CAMERA PREVIEW</span></div>
+      <div class="camera-controls"><button class="tool-button tool-button-main" id="camera-start" type="button">Start camera <span>↗</span></button><button class="tool-button tool-button-soft" id="record" type="button" disabled>Record 20 frames of A</button><button class="tool-button tool-button-text" id="camera-stop" type="button" disabled>Stop</button></div>
+      <p class="record-log" id="record-log">Start the camera, pick a letter on the right, then record.</p>
+    </section>
+
+    <aside class="recognition-side">
+      <section class="model-picker"><span class="tool-overline">SELECTED LETTER</span><div class="record-target" id="record-target">A</div>
+        <div class="letter-grid" id="letter-grid">{% for t in tiles %}<button type="button" class="letter-tile{% if forloop.first %} selected{% endif %}{% if t.count >= t.target %} done{% endif %}{% if t.motion %} motion{% endif %}" data-letter="{{ t.letter }}" data-target="{{ t.target }}" data-motion="{{ t.motion|yesno:'1,' }}" title="{% if t.motion %}Drawn in the air: {{ t.target }} recordings{% else %}Still handshape: {{ t.target }} frames{% endif %}">{{ t.letter }}{% if t.motion %}<em>↯</em>{% endif %}<small>{{ t.count }}</small><i><b style="width:{% widthratio t.count t.target 100 %}%"></b></i></button>{% endfor %}</div>
+        <p class="record-log">↯ = drawn with movement (counts are recordings, not frames).</p>
+      </section>
+      <section class="model-picker"><span class="tool-overline">MODEL</span><h2>Train the letter model</h2><p>Uses every still letter with at least {{ minimum }} samples, and J/Z once both have {{ motion_minimum }} recordings. Takes a few seconds. {% if model_ready %}A trained model already exists; training again replaces it.{% endif %}</p>
+        <div class="camera-controls"><button class="tool-button tool-button-main" id="train" type="button">Train model <span>→</span></button><button class="tool-button tool-button-text" id="delete" type="button">Delete samples of A</button></div>
+        <p class="record-log" id="train-log"></p>
+      </section>
+    </aside>
+  </div>
+</section>
+<form id="csrf" hidden>{% csrf_token %}</form>
+<script>
+(() => {
+  const video = document.getElementById("camera-preview"), placeholder = document.getElementById("camera-placeholder");
+  const start = document.getElementById("camera-start"), stop = document.getElementById("camera-stop"), record = document.getElementById("record");
+  const log = document.getElementById("record-log"), trainLog = document.getElementById("train-log"), del = document.getElementById("delete");
+  const csrf = document.querySelector('#csrf [name="csrfmiddlewaretoken"]').value;
+  const tiles = [...document.querySelectorAll(".letter-tile")];
+  let stream = null, letter = "A", busy = false;
+  const say = (el, text, isError) => { el.textContent = text; el.classList.toggle("error", !!isError); };
+  const tile = (l) => tiles.find((t) => t.dataset.letter === l);
+  const isMotion = (l) => tile(l).dataset.motion === "1", targetOf = (l) => Number(tile(l).dataset.target);
+  const select = (next) => {
+    letter = next; tiles.forEach((t) => t.classList.toggle("selected", t.dataset.letter === letter));
+    document.getElementById("record-target").textContent = letter;
+    record.textContent = isMotion(letter) ? `Record one ${letter} (draw it)` : `Record 20 frames of ${letter}`; del.textContent = `Delete samples of ${letter}`;
+  };
+  const showCounts = (counts) => tiles.forEach((t) => { const n = counts[t.dataset.letter] || 0, target = Number(t.dataset.target); t.querySelector("small").textContent = n; t.querySelector("i b").style.width = `${Math.min(100, n / target * 100)}%`; t.classList.toggle("done", n >= target); });
+  const post = async (fields, frames = []) => {
+    const data = new FormData(); data.append("csrfmiddlewaretoken", csrf);
+    Object.entries(fields).forEach(([k, v]) => data.append(k, v)); frames.forEach((b, i) => data.append("frames", b, `frame-${i}.jpg`));
+    const response = await fetch(window.location.href, {method: "POST", body: data}); const payload = await response.json();
+    if (payload.counts) showCounts(payload.counts);
+    return payload;
+  };
+  tiles.forEach((t) => t.addEventListener("click", () => { if (!busy) select(t.dataset.letter); }));
+  start.addEventListener("click", async () => {
+    try { stream = await navigator.mediaDevices.getUserMedia({video: {facingMode: "user"}, audio: false}); video.srcObject = stream; placeholder.hidden = true; video.hidden = false; record.disabled = false; stop.disabled = false; start.disabled = true; say(log, `Camera is on. Make the letter ${letter} and press Record.`); }
+    catch { say(log, "Camera permission was unavailable.", true); }
+  });
+  stop.addEventListener("click", () => { if (stream) stream.getTracks().forEach((t) => t.stop()); stream = null; video.srcObject = null; video.hidden = true; placeholder.hidden = false; record.disabled = true; stop.disabled = true; start.disabled = false; say(log, "Camera is off."); });
+  record.addEventListener("click", async () => {
+    if (!video.videoWidth || busy) return;
+    busy = true; record.disabled = true;
+    const canvas = document.createElement("canvas"), ctx = canvas.getContext("2d"), frames = [];
+    canvas.width = video.videoWidth; canvas.height = video.videoHeight;
+    const motion = isMotion(letter), target = targetOf(letter);
+    for (let n = motion ? 3 : 2; n > 0; n--) { say(log, motion ? `Get ready to draw ${letter}… ${n}` : `Make the letter ${letter}… ${n}`); await new Promise((r) => setTimeout(r, 1000)); }
+    // Still letters: 20 frames over ~3 s; keep the shape but move the hand slightly so the samples vary.
+    // J/Z: 20 frames over ~2 s (same timing as letter capture on /recognize/); draw the letter once.
+    for (let i = 0; i < 20; i++) { say(log, motion ? `Draw ${letter} now… ${i + 1}/20` : `Recording ${letter}… ${i + 1}/20 — move your hand slightly`); ctx.drawImage(video, 0, 0); frames.push(await new Promise((r) => canvas.toBlob(r, "image/jpeg", .85))); await new Promise((r) => setTimeout(r, motion ? 100 : 150)); }
+    say(log, "Finding your hand in the frames…");
+    try {
+      const payload = await post({action: "add", letter}, frames);
+      if (payload.error) say(log, payload.error, true);
+      else {
+        const n = payload.counts[letter] || 0;
+        say(log, payload.message + (n >= target ? ` ${letter} is done.` : ` ${letter}: ${n}/${target}.`), payload.message.includes("No hand") || payload.message.includes("not saved"));
+        if (n >= target) { const next = tiles.find((t) => (payload.counts[t.dataset.letter] || 0) < Number(t.dataset.target)); if (next) select(next.dataset.letter); }
+      }
+    } catch { say(log, "Could not reach the server.", true); }
+    busy = false; record.disabled = !stream;
+  });
+  del.addEventListener("click", async () => {
+    if (busy || !confirm(`Delete all recorded samples of ${letter}?`)) return;
+    const payload = await post({action: "delete", letter}); say(trainLog, payload.error || payload.message, !!payload.error);
+  });
+  const trainButton = document.getElementById("train");
+  trainButton.addEventListener("click", async () => {
+    if (busy) return; busy = true; trainButton.disabled = true; say(trainLog, "Training…");
+    try { const payload = await post({action: "train"}); say(trainLog, payload.error || payload.message, !!payload.error); }
+    catch { say(trainLog, "Could not reach the server.", true); }
+    busy = false; trainButton.disabled = false;
+  });
+})();
+</script>
+{% endblock %}

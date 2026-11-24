@@ -5,7 +5,7 @@ from django.db import models
 
 
 class RecognitionPrediction(models.Model):
-    MODEL_CHOICES = (("cnn_lstm", "CNN-LSTM"), ("vit_temporal", "Vision Transformer"))
+    MODEL_CHOICES = (("cnn_lstm", "CNN-LSTM"), ("vit_temporal", "Vision Transformer"), ("letters", "Letters (hand landmarks)"))
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="recognition_predictions", null=True, blank=True)
     model_name = models.CharField(max_length=32, choices=MODEL_CHOICES)
     predicted_sign = models.CharField(max_length=120)
